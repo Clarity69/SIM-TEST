@@ -72,7 +72,7 @@ class MahasiswaPdf
      * Penanda tangan: kaprodi bila laporan untuk satu prodi, Ketua STITEK bila semua prodi.
      * Nama kosong dibiarkan null (ditulis tangan), tidak diganti nama dummy.
      *
-     * @return array{nama: ?string, jabatan: string, nidn: ?string}
+     * @return array{nama: ?string, jabatan: string, nidn: ?string, label_nomor: string}
      */
     public function penandatangan(?Prodi $prodi): array
     {
@@ -81,6 +81,7 @@ class MahasiswaPdf
                 'nama' => config('stitek.ketua.nama'),
                 'jabatan' => config('stitek.ketua.jabatan'),
                 'nidn' => config('stitek.ketua.nidn'),
+                'label_nomor' => 'NIDN',
             ];
         }
 
@@ -88,6 +89,7 @@ class MahasiswaPdf
             'nama' => $prodi->kaprodi,
             'jabatan' => ($prodi->kaprodi_jabatan ?: 'Ketua Program Studi').' '.$prodi->nama_prodi,
             'nidn' => $prodi->kaprodi_nidn,
+            'label_nomor' => $prodi->labelNomorInduk(),
         ];
     }
 }

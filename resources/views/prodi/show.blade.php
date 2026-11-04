@@ -9,7 +9,7 @@
         <x-card class="sm:col-span-2">
             <p class="text-sm text-slate-500 dark:text-slate-400">{{ $prodi->kaprodi_jabatan }}</p>
             <p class="mt-1 text-lg font-semibold text-slate-900 dark:text-white">{{ $prodi->kaprodi ?? 'Belum diisi' }}</p>
-            @if ($prodi->kaprodi_nidn) <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">NIDN {{ $prodi->kaprodi_nidn }}</p> @endif
+            @if ($prodi->kaprodi_nidn) <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ $prodi->labelNomorInduk() }} {{ $prodi->kaprodi_nidn }}</p> @endif
             @unless ($prodi->kaprodi)
                 <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Laporan PDF prodi ini akan memakai baris tanda tangan kosong sampai nama kaprodi diisi.</p>
             @endunless

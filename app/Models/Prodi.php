@@ -51,4 +51,12 @@ class Prodi extends Model
     {
         return $this->singkatan ?: $this->kode_prodi;
     }
+
+    /**
+     * Label nomor induk kaprodi: NIDN (10 digit) atau NUPTK (16 digit).
+     */
+    public function labelNomorInduk(): string
+    {
+        return strlen((string) $this->kaprodi_nidn) === 16 ? 'NUPTK' : 'NIDN';
+    }
 }

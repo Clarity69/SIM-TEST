@@ -1,4 +1,4 @@
-{{-- $penandatangan: ['nama' => ?string, 'jabatan' => string, 'nidn' => ?string]. Nama kosong = ditulis tangan. --}}
+{{-- $penandatangan: ['nama' => ?string, 'jabatan' => string, 'nidn' => ?string, 'label_nomor' => string]. Nama kosong = ditulis tangan. --}}
 <table class="ttd">
     <tr>
         <td></td>
@@ -12,7 +12,7 @@
                 ( ........................................ )
             @endif
             @if (filled($penandatangan['nidn']))
-                <br>NIDN. {{ $penandatangan['nidn'] }}
+                <br>{{ $penandatangan['label_nomor'] ?? 'NIDN' }}. {{ $penandatangan['nidn'] }}
             @endif
         </td>
     </tr>

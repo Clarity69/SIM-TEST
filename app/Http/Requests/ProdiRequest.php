@@ -38,7 +38,7 @@ class ProdiRequest extends FormRequest
             'fakultas' => ['nullable', 'string', 'max:255'],
             'kaprodi' => ['nullable', 'string', 'max:255'],
             'kaprodi_jabatan' => ['nullable', 'string', 'max:100'],
-            'kaprodi_nidn' => ['nullable', 'string', 'max:20'],
+            'kaprodi_nidn' => ['nullable', 'digits_between:10,16'],
         ];
     }
 
@@ -52,7 +52,7 @@ class ProdiRequest extends FormRequest
             'nama_prodi' => 'nama program studi',
             'kaprodi' => 'nama kaprodi',
             'kaprodi_jabatan' => 'jabatan',
-            'kaprodi_nidn' => 'NIDN',
+            'kaprodi_nidn' => 'NIDN/NUPTK',
         ];
     }
 
@@ -63,6 +63,11 @@ class ProdiRequest extends FormRequest
     {
         if (blank($this->input('kaprodi_jabatan'))) {
             $this->merge(['kaprodi_jabatan' => 'Ketua Program Studi']);
+        }
+
+        // Nomor induk sering disalin dengan spasi ("0 627 058 802"); simpan digitnya saja.
+        if (filled($this->input('kaprodi_nidn'))) {
+            $this->merge(['kaprodi_nidn' => preg_replace('/\s+/', '', (string) $this->input('kaprodi_nidn'))]);
         }
     }
 }

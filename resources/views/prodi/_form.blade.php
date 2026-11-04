@@ -16,7 +16,7 @@
             <x-form-section title="Kepala Program Studi" description="Penanda tangan laporan PDF prodi. Isi hanya dengan data resmi; boleh dikosongkan." icon="user-round">
                 <x-input name="kaprodi" label="Nama dan gelar" :value="$prodi?->kaprodi" maxlength="255" class="sm:col-span-2" placeholder="Nama lengkap, S.T., M.Eng" />
                 <x-input name="kaprodi_jabatan" label="Jabatan" :value="$prodi?->kaprodi_jabatan ?? 'Ketua Program Studi'" maxlength="100" hint="Contoh: Plt. Ketua Program Studi" />
-                <x-input name="kaprodi_nidn" label="NIDN" :value="$prodi?->kaprodi_nidn" maxlength="20" inputmode="numeric" />
+                <x-input name="kaprodi_nidn" label="NIDN / NUPTK" :value="$prodi?->kaprodi_nidn" maxlength="20" inputmode="numeric" hint="Tanpa spasi. 10 digit = NIDN, 16 digit = NUPTK." />
             </x-form-section>
         </div>
 

@@ -53,4 +53,34 @@ class ProdiTest extends TestCase
             ->assertOk()
             ->assertViewHas('mahasiswas', fn ($page) => $page->count() === 15 && $page->total() === 16);
     }
+
+    public function test_store_strips_spaces_from_nomor_induk_and_labels_it_by_length(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->post(route('prodi.store'), [
+                'kode_prodi' => '61209',
+                'nama_prodi' => 'Bisnis Digital',
+                'kaprodi' => 'Abd. Rahim, S.ST., M.M.',
+                'kaprodi_nidn' => '424 777 367 413 026 3',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $prodi = Prodi::where('kode_prodi', '61209')->sole();
+        $this->assertSame('4247773674130263', $prodi->kaprodi_nidn);
+        $this->assertSame('NUPTK', $prodi->labelNomorInduk());
+
+        $prodi->update(['kaprodi_nidn' => '0627058802']);
+        $this->assertSame('NIDN', $prodi->labelNomorInduk());
+    }
+
+    public function test_store_rejects_nomor_induk_with_letters(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->post(route('prodi.store'), [
+                'kode_prodi' => '57201',
+                'nama_prodi' => 'Sistem Informasi',
+                'kaprodi_nidn' => '06270588AB',
+            ])
+            ->assertSessionHasErrors('kaprodi_nidn');
+    }
 }
