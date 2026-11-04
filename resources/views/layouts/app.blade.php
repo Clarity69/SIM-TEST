@@ -3,6 +3,15 @@
 <head>
     @include('layouts.partials.head')
     <title>{{ $title }} · SIM Mahasiswa {{ config('stitek.singkatan') }}</title>
+    {{-- Prerender halaman saat kursor berada di link (Chromium). PDF/ekspor dikecualikan. --}}
+    <script type="speculationrules">
+        {"prerender": [{"source": "document", "where": {"and": [
+            {"href_matches": "/*"},
+            {"not": {"href_matches": "/*pdf*"}},
+            {"not": {"href_matches": "/*export*"}},
+            {"not": {"selector_matches": "[target=_blank], [data-no-prerender]"}}
+        ]}, "eagerness": "moderate"}]}
+    </script>
 </head>
 <body class="h-full" x-data>
     <a href="#konten" class="sr-only z-[70] rounded-lg bg-white px-4 py-2 text-sm font-semibold text-primary-700 focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Lewati ke konten</a>

@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Services\DashboardStats;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Cache;
 
 class Prodi extends Model
 {
@@ -31,8 +33,35 @@ class Prodi extends Model
      */
     protected static function booted(): void
     {
-        static::saved(fn () => DashboardStats::forget());
-        static::deleted(fn () => DashboardStats::forget());
+        $forget = function () {
+            DashboardStats::forget();
+            Cache::forget(self::OPSI_CACHE_KEY);
+            Mahasiswa::bumpVersiDaftar(); // nama/singkatan prodi tampil di daftar mahasiswa
+        };
+
+        static::saved($forget);
+        static::deleted($forget);
+    }
+
+    public const OPSI_CACHE_KEY = 'prodi.opsi';
+
+    /**
+     * Daftar prodi untuk dropdown (id, kode, singkatan, nama), di-cache sebagai array
+     * karena jarang berubah; dibersihkan otomatis saat prodi disimpan/dihapus.
+     *
+     * @return Collection<int, Prodi>
+     */
+    public static function opsi(): Collection
+    {
+        $rows = Cache::rememberForever(self::OPSI_CACHE_KEY, fn () => static::query()
+            ->select('id', 'kode_prodi', 'singkatan', 'nama_prodi')
+            ->orderBy('nama_prodi')
+            ->toBase()
+            ->get()
+            ->map(fn ($row) => (array) $row)
+            ->all());
+
+        return static::hydrate($rows);
     }
 
     /**

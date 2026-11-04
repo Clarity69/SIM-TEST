@@ -63,7 +63,8 @@ return [
 
     'providers' => [
         'users' => [
-            'driver' => 'eloquent',
+            // Eloquent + cache atribut user di cache lokal (App\Auth\CachedUserProvider).
+            'driver' => 'cached-eloquent',
             'model' => env('AUTH_MODEL', User::class),
         ],
 

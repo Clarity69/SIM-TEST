@@ -8,6 +8,7 @@ use App\Models\Prodi;
 use App\Models\User;
 use App\Notifications\MahasiswaChanged;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
@@ -99,6 +100,7 @@ class MahasiswaTest extends TestCase
         Mahasiswa::factory()->for($prodis[0])->create();
 
         $hitung = function () use ($user): int {
+            Cache::flush(); // bandingkan dua request tanpa cache (cold)
             DB::flushQueryLog();
             DB::enableQueryLog();
             $this->actingAs($user)->get(route('mahasiswa.index'))->assertOk();

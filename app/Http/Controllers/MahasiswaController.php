@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\View\View;
@@ -189,34 +190,44 @@ class MahasiswaController extends Controller
     private function paginateDaftar(Request $request, int $perPage = 10): LengthAwarePaginator
     {
         $page = max(1, $request->integer('page', 1));
+        $filters = $this->filters($request);
 
-        $baris = Mahasiswa::query()
-            ->join('prodis', 'prodis.id', '=', 'mahasiswas.prodi_id')
-            ->select('mahasiswas.id', 'mahasiswas.nim', 'mahasiswas.nama', 'mahasiswas.jenis_kelamin', 'mahasiswas.prodi_id', 'mahasiswas.created_at')
-            ->addSelect('prodis.kode_prodi as prodi_kode', 'prodis.singkatan as prodi_singkatan', 'prodis.nama_prodi as prodi_nama')
-            ->selectRaw('COUNT(*) OVER () AS total_baris')
-            ->filter($this->filters($request))
-            ->forPage($page, $perPage)
-            ->get();
+        // Hasil per halaman/filter di-cache sebagai array; kunci memuat versi data sehingga
+        // otomatis usang begitu ada mahasiswa/prodi yang berubah (Mahasiswa::versiDaftar()).
+        $kunci = 'mahasiswa.daftar.'.Mahasiswa::versiDaftar().'.'.md5(json_encode([$filters, $page, $perPage]));
 
-        // Halaman di luar jangkauan tidak membawa total; hitung terpisah (jarang terjadi).
-        $total = $baris->isNotEmpty()
-            ? (int) $baris->first()->total_baris
-            : ($page > 1 ? Mahasiswa::query()->filter($this->filters($request))->count() : 0);
+        ['rows' => $rows, 'total' => $total] = Cache::remember($kunci, 600, function () use ($filters, $page, $perPage) {
+            $rows = Mahasiswa::query()
+                ->join('prodis', 'prodis.id', '=', 'mahasiswas.prodi_id')
+                ->select('mahasiswas.id', 'mahasiswas.nim', 'mahasiswas.nama', 'mahasiswas.jenis_kelamin', 'mahasiswas.prodi_id', 'mahasiswas.created_at')
+                ->addSelect('prodis.kode_prodi as prodi_kode', 'prodis.singkatan as prodi_singkatan', 'prodis.nama_prodi as prodi_nama')
+                ->selectRaw('COUNT(*) OVER () AS total_baris')
+                ->filter($filters)
+                ->forPage($page, $perPage)
+                ->toBase()
+                ->get()
+                ->map(fn ($row) => (array) $row)
+                ->all();
 
-        $baris->each(function (Mahasiswa $mahasiswa) {
-            $prodi = (new Prodi)->forceFill([
-                'id' => $mahasiswa->prodi_id,
-                'kode_prodi' => $mahasiswa->prodi_kode,
-                'singkatan' => $mahasiswa->prodi_singkatan,
-                'nama_prodi' => $mahasiswa->prodi_nama,
+            // Halaman di luar jangkauan tidak membawa total; hitung terpisah (jarang terjadi).
+            $total = $rows !== []
+                ? (int) $rows[0]['total_baris']
+                : ($page > 1 ? Mahasiswa::query()->filter($filters)->count() : 0);
+
+            return ['rows' => $rows, 'total' => $total];
+        });
+
+        $baris = collect($rows)->map(function (array $row) {
+            $prodi = (new Prodi)->newFromBuilder([
+                'id' => $row['prodi_id'],
+                'kode_prodi' => $row['prodi_kode'],
+                'singkatan' => $row['prodi_singkatan'],
+                'nama_prodi' => $row['prodi_nama'],
             ]);
-            $prodi->exists = true;
-            $prodi->syncOriginal();
 
-            $mahasiswa->setRelation('prodi', $prodi);
-            unset($mahasiswa->prodi_kode, $mahasiswa->prodi_singkatan, $mahasiswa->prodi_nama, $mahasiswa->total_baris);
-            $mahasiswa->syncOriginal();
+            $mahasiswa = (new Mahasiswa)->newFromBuilder(collect($row)->except(['prodi_kode', 'prodi_singkatan', 'prodi_nama', 'total_baris'])->all());
+
+            return $mahasiswa->setRelation('prodi', $prodi);
         });
 
         return (new LengthAwarePaginator($baris, $total, $perPage, $page, [
@@ -248,9 +259,6 @@ class MahasiswaController extends Controller
      */
     private function prodiOptions(): Collection
     {
-        return Prodi::query()
-            ->select('id', 'kode_prodi', 'singkatan', 'nama_prodi')
-            ->orderBy('nama_prodi')
-            ->get();
+        return Prodi::opsi();
     }
 }

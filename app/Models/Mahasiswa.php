@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class Mahasiswa extends Model
 {
@@ -65,9 +66,33 @@ class Mahasiswa extends Model
      */
     protected static function booted(): void
     {
-        static::saved(fn () => DashboardStats::forget());
-        static::deleted(fn () => DashboardStats::forget());
-        static::restored(fn () => DashboardStats::forget());
+        $berubah = function () {
+            DashboardStats::forget();
+            self::bumpVersiDaftar();
+        };
+
+        static::saved($berubah);
+        static::deleted($berubah);
+        static::restored($berubah);
+        static::forceDeleted($berubah);
+    }
+
+    public const VERSI_DAFTAR_KEY = 'mahasiswa.daftar.versi';
+
+    /**
+     * Versi data daftar mahasiswa untuk kunci cache halaman index/pencarian.
+     */
+    public static function versiDaftar(): string
+    {
+        return Cache::rememberForever(self::VERSI_DAFTAR_KEY, fn () => (string) now()->getTimestampMs());
+    }
+
+    /**
+     * Menandai semua cache daftar mahasiswa usang (dipanggil saat mahasiswa/prodi berubah).
+     */
+    public static function bumpVersiDaftar(): void
+    {
+        Cache::forever(self::VERSI_DAFTAR_KEY, (string) now()->getTimestampMs().random_int(100, 999));
     }
 
     /**
