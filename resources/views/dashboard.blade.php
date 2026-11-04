@@ -8,16 +8,16 @@
         ];
         $grafikGender = ['type' => 'doughnut', 'labels' => ['Laki-laki', 'Perempuan'], 'values' => [$totalLakiLaki, $totalPerempuan]];
     @endphp
-    <x-page-header title="Dashboard" description="Ringkasan data akademik {{ config('stitek.singkatan') }} · diperbarui otomatis setiap 5 menit">
+    <x-page-header title="Dashboard" description="Ringkasan data akademik {{ config('stitek.singkatan') }} · persentase dibanding data sebelum perubahan terakhir">
         <x-button variant="secondary" icon="printer" :href="route('mahasiswa.pdf')" target="_blank">Cetak PDF</x-button>
         <x-button icon="plus" :href="route('mahasiswa.create')">Tambah Mahasiswa</x-button>
     </x-page-header>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <x-stat-card label="Total Mahasiswa" :value="$totalMahasiswa" icon="users" :trend="$tren['total']" :delta="$selisih['total']" />
-        <x-stat-card label="Laki-laki" :value="$totalLakiLaki" icon="user" tone="accent" :trend="$tren['laki']" :delta="$selisih['laki']" />
-        <x-stat-card label="Perempuan" :value="$totalPerempuan" icon="user-round" tone="secondary" :trend="$tren['perempuan']" :delta="$selisih['perempuan']" />
-        <x-stat-card label="Program Studi" :value="$totalProdi" icon="graduation-cap" tone="success" :trend="$tren['prodi']" :delta="$selisih['prodi']" />
+        <x-stat-card label="Total Mahasiswa" :value="$totalMahasiswa" icon="users" :trend="$tren['total']" :delta="$selisih['total']" :since="$terakhir['total']" />
+        <x-stat-card label="Laki-laki" :value="$totalLakiLaki" icon="user" tone="accent" :trend="$tren['laki']" :delta="$selisih['laki']" :since="$terakhir['laki']" />
+        <x-stat-card label="Perempuan" :value="$totalPerempuan" icon="user-round" tone="secondary" :trend="$tren['perempuan']" :delta="$selisih['perempuan']" :since="$terakhir['perempuan']" />
+        <x-stat-card label="Program Studi" :value="$totalProdi" icon="graduation-cap" tone="success" :trend="$tren['prodi']" :delta="$selisih['prodi']" :since="$terakhir['prodi']" />
     </div>
 
     <div class="grid gap-4 lg:grid-cols-3">

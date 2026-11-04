@@ -32,6 +32,7 @@ class DashboardController extends Controller
                 'perempuan' => $stats['perempuan'] - $stats['sebelum']['perempuan'],
                 'prodi' => $stats['totalProdi'] - $stats['sebelum']['prodi'],
             ],
+            'terakhir' => $stats['terakhir'],
             'mahasiswaTerbaru' => collect($stats['terbaru']),
             'mahasiswaPerProdi' => collect($stats['perProdi']),
         ]);

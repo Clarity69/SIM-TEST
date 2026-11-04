@@ -28,19 +28,12 @@ class DashboardTest extends TestCase
             ->assertViewHas('totalProdi', 1);
     }
 
-    public function test_trend_compares_with_data_from_thirty_days_ago(): void
+    public function test_percentage_formula_handles_empty_and_negative_changes(): void
     {
-        $prodi = Prodi::factory()->create();
-        Mahasiswa::factory()->count(2)->for($prodi)->create(['created_at' => now()->subDays(40)]);
-        Mahasiswa::factory()->count(2)->for($prodi)->create();
-
-        $stats = app(DashboardStats::class)->get();
-
-        $this->assertSame(2, $stats['sebelum']['total']);
-        $this->assertSame(100.0, DashboardStats::perubahan($stats['total'], $stats['sebelum']['total']));
-        $this->assertSame(100.0, DashboardStats::perubahan(3, 0));
+        $this->assertSame(1.0, DashboardStats::perubahan(100, 99));
+        $this->assertSame(-1.0, DashboardStats::perubahan(99, 100));
+        $this->assertSame(100.0, DashboardStats::perubahan(1, 0));
         $this->assertSame(0.0, DashboardStats::perubahan(0, 0));
-        $this->assertSame(-50.0, DashboardStats::perubahan(1, 2));
     }
 
     public function test_cached_stats_are_refreshed_after_mahasiswa_changes(): void
@@ -68,24 +61,34 @@ class DashboardTest extends TestCase
         $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertViewHas('totalMahasiswa', 2);
     }
 
-    public function test_deleting_lowers_trend_and_adding_raises_it_even_for_old_records(): void
+    public function test_each_add_raises_and_each_delete_lowers_trend_per_category(): void
     {
         $prodi = Prodi::factory()->create();
-        $lama = Mahasiswa::factory()->count(4)->for($prodi)->create(['created_at' => now()->subDays(60)]);
-        Mahasiswa::factory()->count(2)->for($prodi)->create();
+        Mahasiswa::factory()->count(50)->for($prodi)->lakiLaki()->create(['created_at' => now()->subDays(3)]);
+        Mahasiswa::factory()->count(49)->for($prodi)->perempuan()->create(['created_at' => now()->subDays(2)]);
         $stats = app(DashboardStats::class);
-        $tren = fn () => DashboardStats::perubahan($stats->get()['total'], $stats->get()['sebelum']['total']);
+        $tren = function (string $kunci) use ($stats): float {
+            $s = $stats->get();
 
-        $awal = $tren();
-        $this->assertSame(50.0, $awal);
+            return DashboardStats::perubahan($s[$kunci === 'total' ? 'total' : $kunci], $s['sebelum'][$kunci]);
+        };
 
-        $lama->first()->delete();
-        $setelahHapus = $tren();
-        $this->assertLessThan($awal, $setelahHapus);
-        $this->assertSame(4, $stats->get()['sebelum']['total']);
+        $this->travel(1)->minutes();
+        $baru = Mahasiswa::factory()->for($prodi)->perempuan()->create();
+        $this->assertSame(1.0, $tren('total'));          // 99 -> 100
+        $this->assertSame(2.0, $tren('perempuan'));      // 49 -> 50
+        $this->assertSame(100.0, $tren('laki'));          // perubahan terakhir laki-laki: 0 -> 50 (seeding)
 
-        Mahasiswa::factory()->for($prodi)->create();
-        $this->assertGreaterThan($setelahHapus, $tren());
+        $this->travel(1)->minutes();
+        $baru->delete();
+        $this->assertSame(-1.0, $tren('total'));         // 100 -> 99
+        $this->assertSame(-2.0, $tren('perempuan'));     // 50 -> 49
+
+        $this->travel(1)->minutes();
+        Mahasiswa::where('jenis_kelamin', 'Laki-laki')->first()->delete();
+        $this->assertSame(-1.0, round($tren('total'), 0)); // 99 -> 98
+        $this->assertSame(-2.0, $tren('laki'));          // 50 -> 49
+        $this->assertSame(-2.0, $tren('perempuan'));     // tidak berubah sejak hapus terakhir
     }
 
     public function test_deleted_nim_can_be_registered_again(): void

@@ -1,4 +1,4 @@
-@props(['label', 'value', 'icon', 'tone' => 'primary', 'trend' => null, 'delta' => null])
+@props(['label', 'value', 'icon', 'tone' => 'primary', 'trend' => null, 'delta' => null, 'since' => null])
 
 @php
     $tones = [
@@ -24,7 +24,7 @@
                 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' => $up,
                 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300' => ! $up && ! $flat,
                 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' => $flat,
-            ]) title="Dibanding 30 hari lalu">
+            ]) title="Dibanding jumlah sebelum perubahan terakhir">
                 <x-icon :name="$flat ? 'minus' : ($up ? 'trending-up' : 'trending-down')" class="size-3.5" />
                 {{ ($up ? '+' : '').number_format($trend, 1, ',', '.') }}%
             </span>
@@ -36,7 +36,10 @@
         @if ($delta !== null)
             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 <span @class(['font-semibold tabular-nums', 'text-emerald-700 dark:text-emerald-400' => $delta > 0, 'text-red-700 dark:text-red-400' => $delta < 0])>{{ $delta > 0 ? '+' : '' }}{{ number_format($delta, 0, ',', '.') }}</span>
-                dibanding 30 hari lalu
+                dari data sebelumnya
+                @if ($since)
+                    · {{ \Illuminate\Support\Carbon::parse($since)->locale('id')->diffForHumans() }}
+                @endif
             </p>
         @endif
     </div>

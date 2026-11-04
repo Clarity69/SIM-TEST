@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -23,6 +24,7 @@ class DashboardStats
      * @return array{
      *     total: int, laki: int, perempuan: int, totalProdi: int,
      *     sebelum: array{total: int, laki: int, perempuan: int, prodi: int},
+     *     terakhir: array{total: ?string, laki: ?string, perempuan: ?string, prodi: ?string},
      *     perProdi: list<array{id: int, label: string, nama_prodi: string, mahasiswas_count: int}>,
      *     terbaru: list<array{id: int, nim: string, nama: string, jenis_kelamin: string, prodi: string, created_at: string}>
      * }
@@ -38,29 +40,46 @@ class DashboardStats
     }
 
     /**
-     * Query 1: semua angka mahasiswa (sekarang dan 30 hari lalu) dalam satu agregat.
-     * Query 2: jumlah mahasiswa per prodi (withCount), sekaligus total prodi.
-     * Query 3 + 4: 5 mahasiswa terbaru beserta prodinya (eager load).
+     * Tren dihitung per perubahan data, bukan per periode:
+     * jumlah sekarang dibanding jumlah tepat sebelum perubahan terakhir (tambah/hapus)
+     * di kategori tersebut. Tambah 1 data -> naik, hapus 1 data -> turun.
+     *
+     * Query 1: waktu perubahan terakhir per kategori (MAX created_at / deleted_at).
+     * Query 2: jumlah sekarang dan jumlah sebelum perubahan terakhir, satu agregat.
+     * Query 3: jumlah mahasiswa per prodi (withCount), sekaligus total prodi.
+     * Query 4 + 5: 5 mahasiswa terbaru beserta prodinya (eager load).
      */
     private function compute(): array
     {
-        $batas = now()->subDays(30);
+        $kategori = [
+            'total' => '1 = 1',
+            'laki' => "jenis_kelamin = 'Laki-laki'",
+            'perempuan' => "jenis_kelamin = 'Perempuan'",
+        ];
 
-        // withTrashed: populasi 30 hari lalu = data yang sudah ada saat itu dan belum
-        // dihapus saat itu. Dengan begitu menghapus 1 data selalu menurunkan tren,
-        // menambah 1 data selalu menaikkannya.
-        $ada = 'deleted_at IS NULL';
-        $adaSaatItu = 'created_at <= ? AND (deleted_at IS NULL OR deleted_at > ?)';
+        $waktu = Mahasiswa::withTrashed()->toBase();
+        foreach ($kategori as $kunci => $syarat) {
+            $waktu->selectRaw("MAX(created_at) FILTER (WHERE {$syarat}) AS {$kunci}_dibuat")
+                ->selectRaw("MAX(deleted_at) FILTER (WHERE {$syarat}) AS {$kunci}_dihapus");
+        }
+        $waktu = $waktu->first();
 
-        $agregat = Mahasiswa::withTrashed()
-            ->selectRaw("COUNT(*) FILTER (WHERE {$ada}) AS total")
-            ->selectRaw("COUNT(*) FILTER (WHERE {$ada} AND jenis_kelamin = 'Laki-laki') AS laki")
-            ->selectRaw("COUNT(*) FILTER (WHERE {$ada} AND jenis_kelamin = 'Perempuan') AS perempuan")
-            ->selectRaw("COUNT(*) FILTER (WHERE {$adaSaatItu}) AS total_sebelum", [$batas, $batas])
-            ->selectRaw("COUNT(*) FILTER (WHERE {$adaSaatItu} AND jenis_kelamin = 'Laki-laki') AS laki_sebelum", [$batas, $batas])
-            ->selectRaw("COUNT(*) FILTER (WHERE {$adaSaatItu} AND jenis_kelamin = 'Perempuan') AS perempuan_sebelum", [$batas, $batas])
-            ->toBase()
-            ->first();
+        $agregat = Mahasiswa::withTrashed()->toBase();
+        $terakhir = [];
+        foreach ($kategori as $kunci => $syarat) {
+            $terakhir[$kunci] = collect([$waktu->{"{$kunci}_dibuat"}, $waktu->{"{$kunci}_dihapus"}])->filter()->max();
+
+            $agregat->selectRaw("COUNT(*) FILTER (WHERE {$syarat} AND deleted_at IS NULL) AS {$kunci}");
+
+            // Populasi tepat sebelum perubahan terakhir: sudah dibuat sebelum T dan belum dihapus saat T.
+            $terakhir[$kunci] === null
+                ? $agregat->selectRaw("0 AS {$kunci}_sebelum")
+                : $agregat->selectRaw(
+                    "COUNT(*) FILTER (WHERE {$syarat} AND created_at < ? AND (deleted_at IS NULL OR deleted_at >= ?)) AS {$kunci}_sebelum",
+                    [$terakhir[$kunci], $terakhir[$kunci]],
+                );
+        }
+        $agregat = $agregat->first();
 
         $perProdi = Prodi::query()
             ->select('id', 'kode_prodi', 'singkatan', 'nama_prodi', 'created_at')
@@ -85,7 +104,14 @@ class DashboardStats
                 'total' => (int) $agregat->total_sebelum,
                 'laki' => (int) $agregat->laki_sebelum,
                 'perempuan' => (int) $agregat->perempuan_sebelum,
-                'prodi' => $perProdi->filter(fn (Prodi $prodi) => $prodi->created_at <= $batas)->count(),
+                // Prodi dihapus permanen; yang bisa dilacak hanya penambahan terakhir.
+                'prodi' => $perProdi->filter(fn (Prodi $prodi) => $prodi->created_at < $perProdi->max('created_at'))->count(),
+            ],
+            'terakhir' => [
+                'total' => $terakhir['total'] ? Carbon::parse($terakhir['total'])->toIso8601String() : null,
+                'laki' => $terakhir['laki'] ? Carbon::parse($terakhir['laki'])->toIso8601String() : null,
+                'perempuan' => $terakhir['perempuan'] ? Carbon::parse($terakhir['perempuan'])->toIso8601String() : null,
+                'prodi' => $perProdi->max('created_at')?->toIso8601String(),
             ],
             'perProdi' => $perProdi->map(fn (Prodi $prodi) => [
                 'id' => $prodi->id,
@@ -105,8 +131,8 @@ class DashboardStats
     }
 
     /**
-     * Persentase perubahan dibanding 30 hari lalu.
-     * Bila 30 hari lalu belum ada data, semua data dianggap pertambahan (+100%).
+     * Persentase perubahan dibanding jumlah sebelum perubahan terakhir.
+     * Bila sebelumnya belum ada data, data pertama dianggap pertambahan (+100%).
      */
     public static function perubahan(int $sekarang, int $sebelumnya): float
     {
