@@ -57,10 +57,12 @@
                                     <div class="flex justify-end gap-1">
                                         <x-button variant="ghost" size="icon" :href="route('prodi.show', $prodi)" title="Lihat detail"><x-icon name="eye" class="size-4" /><span class="sr-only">Lihat {{ $prodi->nama_prodi }}</span></x-button>
                                         <x-button variant="ghost" size="icon" :href="route('prodi.edit', $prodi)" title="Edit"><x-icon name="pencil" class="size-4" /><span class="sr-only">Edit {{ $prodi->nama_prodi }}</span></x-button>
-                                        <x-button variant="ghost" size="icon" class="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10" title="Hapus"
+                                        @can('delete', $prodi)
+                                            <x-button variant="ghost" size="icon" class="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10" title="Hapus"
                                             x-on:click="$store.confirm.ask({{ \Illuminate\Support\Js::from(['title' => 'Hapus program studi?', 'message' => $prodi->mahasiswas_count > 0 ? $prodi->nama_prodi.' masih memiliki '.$prodi->mahasiswas_count.' mahasiswa sehingga tidak dapat dihapus.' : $prodi->nama_prodi.' akan dihapus.', 'action' => route('prodi.destroy', $prodi)]) }})">
                                             <x-icon name="trash-2" class="size-4" /><span class="sr-only">Hapus {{ $prodi->nama_prodi }}</span>
                                         </x-button>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>

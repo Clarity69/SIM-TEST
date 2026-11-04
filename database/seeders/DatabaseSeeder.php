@@ -19,9 +19,10 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Administrator', 'password' => 'password123'],
         );
 
-        if (! $admin->hasVerifiedEmail()) {
-            $admin->markEmailAsVerified();
-        }
+        $admin->forceFill([
+            'role' => User::ROLE_ADMIN,
+            'email_verified_at' => $admin->email_verified_at ?? now(),
+        ])->save();
 
         $this->call([
             ProdiSeeder::class,

@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MahasiswaController;
 use App\Http\Controllers\ProdiController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -36,6 +37,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Resource CRUD Mahasiswa & Prodi
     Route::resource('mahasiswa', MahasiswaController::class);
     Route::resource('prodi', ProdiController::class);
+
+    // Khusus admin
+    Route::middleware('can:admin')->group(function () {
+        Route::get('/pengguna', [UserController::class, 'index'])->name('users.index');
+        Route::patch('/pengguna/{user}/role', [UserController::class, 'updateRole'])->name('users.role');
+        Route::delete('/pengguna/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    });
 });
 
 // Profil: cukup login (user yang belum verifikasi tetap bisa memperbaiki email)

@@ -21,6 +21,30 @@ class User extends Authenticatable implements MustVerifyEmail
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_OPERATOR = 'operator';
+
+    /** @var array<string, string> */
+    public const ROLES = [
+        self::ROLE_ADMIN => 'Admin',
+        self::ROLE_OPERATOR => 'Operator',
+    ];
+
+    /**
+     * Nilai default sama dengan migration agar model baru langsung punya role.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'role' => self::ROLE_OPERATOR,
+    ];
+
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
     /**
      * Data user yang login di-cache (CachedUserProvider); bersihkan saat berubah.
      */

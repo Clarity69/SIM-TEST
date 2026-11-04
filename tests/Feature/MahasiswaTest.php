@@ -142,12 +142,13 @@ class MahasiswaTest extends TestCase
             ->assertSessionHasErrors(['nim', 'jenis_kelamin']);
     }
 
-    public function test_store_creates_mahasiswa_and_notifies_only_opted_in_users(): void
+    public function test_store_creates_mahasiswa_and_notifies_only_opted_in_admins(): void
     {
         Notification::fake();
         $prodi = Prodi::factory()->create();
         $operator = User::factory()->create(['name' => 'Operator Satu']);
-        $optedOut = User::factory()->create(['notify_mahasiswa_changes' => false]);
+        $admin = User::factory()->admin()->create();
+        $adminOptOut = User::factory()->admin()->create(['notify_mahasiswa_changes' => false]);
 
         $this->actingAs($operator)
             ->post(route('mahasiswa.store'), $this->payload($prodi))
@@ -155,11 +156,12 @@ class MahasiswaTest extends TestCase
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('mahasiswas', ['nim' => '202412001', 'prodi_id' => $prodi->id]);
-        Notification::assertSentTo($operator, MahasiswaChanged::class, fn (MahasiswaChanged $n) => $n->aksi === 'ditambahkan'
+        Notification::assertSentTo($admin, MahasiswaChanged::class, fn (MahasiswaChanged $n) => $n->aksi === 'ditambahkan'
             && $n->mahasiswa['nim'] === '202412001'
             && $n->mahasiswa['prodi'] === $prodi->nama_prodi
             && $n->oleh === 'Operator Satu');
-        Notification::assertNotSentTo($optedOut, MahasiswaChanged::class);
+        Notification::assertNotSentTo($operator, MahasiswaChanged::class);
+        Notification::assertNotSentTo($adminOptOut, MahasiswaChanged::class);
     }
 
     public function test_update_keeps_own_nim_without_unique_error(): void
@@ -178,7 +180,7 @@ class MahasiswaTest extends TestCase
     public function test_destroy_deletes_mahasiswa_and_sends_notification(): void
     {
         Notification::fake();
-        $user = User::factory()->create();
+        $user = User::factory()->admin()->create();
         $mahasiswa = Mahasiswa::factory()->create(['nim' => '202412055']);
 
         $this->actingAs($user)

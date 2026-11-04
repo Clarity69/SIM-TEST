@@ -49,6 +49,12 @@
                 <x-sidebar-link :href="route('mahasiswa.index')" icon="users" :active="request()->routeIs('mahasiswa.*')">Data Mahasiswa</x-sidebar-link>
                 <x-sidebar-link :href="route('prodi.index')" icon="graduation-cap" :active="request()->routeIs('prodi.*')">Program Studi</x-sidebar-link>
             </div>
+            @can('admin')
+                <div class="space-y-1">
+                    <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-primary-300" x-bind:class="$store.sidebar.collapsed ? 'lg:sr-only' : ''">Admin</p>
+                    <x-sidebar-link :href="route('users.index')" icon="users" :active="request()->routeIs('users.*')">Pengguna</x-sidebar-link>
+                </div>
+            @endcan
             <div class="space-y-1">
                 <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-primary-300" x-bind:class="$store.sidebar.collapsed ? 'lg:sr-only' : ''">Akun</p>
                 <x-sidebar-link :href="route('profile.edit')" icon="user-round" :active="request()->routeIs('profile.*')">Profil Saya</x-sidebar-link>
@@ -98,7 +104,7 @@
                         <x-avatar :name="Auth::user()->name" size="sm" />
                         <span class="hidden text-left sm:block">
                             <span class="block text-sm font-semibold leading-tight text-slate-900 dark:text-white">{{ Auth::user()->name }}</span>
-                            <span class="block text-xs leading-tight text-slate-500 dark:text-slate-400">{{ Auth::user()->email }}</span>
+                            <span class="block text-xs leading-tight text-slate-500 dark:text-slate-400">{{ \App\Models\User::ROLES[Auth::user()->role] ?? Auth::user()->role }} · {{ Auth::user()->email }}</span>
                         </span>
                         <x-icon name="chevron-down" class="size-4 text-slate-400" />
                         <span class="sr-only">Menu profil</span>

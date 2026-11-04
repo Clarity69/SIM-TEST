@@ -161,11 +161,14 @@ class MahasiswaController extends Controller
     }
 
     /**
-     * Beri tahu user yang mengaktifkan notifikasi perubahan data (lewat queue).
+     * Beri tahu admin yang mengaktifkan notifikasi perubahan data (lewat queue).
      */
     private function notifyAdmins(string $aksi, Mahasiswa $mahasiswa, Request $request): void
     {
-        $penerima = User::query()->where('notify_mahasiswa_changes', true)->get();
+        $penerima = User::query()
+            ->where('role', User::ROLE_ADMIN)
+            ->where('notify_mahasiswa_changes', true)
+            ->get();
 
         if ($penerima->isEmpty()) {
             return;

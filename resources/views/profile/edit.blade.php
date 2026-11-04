@@ -78,7 +78,7 @@
                     <div class="flex items-start justify-between gap-6">
                         <div>
                             <p id="notif-label" class="text-sm font-medium text-slate-900 dark:text-white">Perubahan data mahasiswa</p>
-                            <p id="notif-desc" class="mt-0.5 text-sm text-slate-500 dark:text-slate-400">Kirim email ke {{ $user->email }} saat data mahasiswa ditambahkan atau dihapus.</p>
+                            <p id="notif-desc" class="mt-0.5 text-sm text-slate-500 dark:text-slate-400">Kirim email ke {{ $user->email }} saat data mahasiswa ditambahkan atau dihapus.@unless ($user->isAdmin()) <strong class="font-medium">Hanya berlaku untuk akun admin.</strong>@endunless</p>
                         </div>
                         <input type="hidden" name="notify_mahasiswa_changes" x-bind:value="aktif ? 1 : 0" value="{{ $user->notify_mahasiswa_changes ? 1 : 0 }}">
                         <button type="button" role="switch" x-bind:aria-checked="aktif.toString()" aria-labelledby="notif-label" aria-describedby="notif-desc"

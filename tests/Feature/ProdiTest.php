@@ -36,7 +36,7 @@ class ProdiTest extends TestCase
         $prodi = Prodi::factory()->create();
         Mahasiswa::factory()->for($prodi)->create();
 
-        $this->actingAs(User::factory()->create())
+        $this->actingAs(User::factory()->admin()->create())
             ->delete(route('prodi.destroy', $prodi))
             ->assertSessionHas('error');
 

@@ -6,6 +6,7 @@ use App\Http\Requests\ProdiRequest;
 use App\Models\Prodi;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class ProdiController extends Controller
 {
@@ -94,6 +95,8 @@ class ProdiController extends Controller
      */
     public function destroy(Prodi $prodi)
     {
+        Gate::authorize('delete', $prodi);
+
         // Termasuk mahasiswa di Sampah: foreign key tetap menunjuk ke prodi ini.
         if ($prodi->mahasiswas()->withTrashed()->exists()) {
             return back()->with(
