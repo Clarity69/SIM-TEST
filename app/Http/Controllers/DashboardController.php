@@ -26,6 +26,12 @@ class DashboardController extends Controller
                 'perempuan' => DashboardStats::perubahan($stats['perempuan'], $stats['sebelum']['perempuan']),
                 'prodi' => DashboardStats::perubahan($stats['totalProdi'], $stats['sebelum']['prodi']),
             ],
+            'selisih' => [
+                'total' => $stats['total'] - $stats['sebelum']['total'],
+                'laki' => $stats['laki'] - $stats['sebelum']['laki'],
+                'perempuan' => $stats['perempuan'] - $stats['sebelum']['perempuan'],
+                'prodi' => $stats['totalProdi'] - $stats['sebelum']['prodi'],
+            ],
             'mahasiswaTerbaru' => collect($stats['terbaru']),
             'mahasiswaPerProdi' => collect($stats['perProdi']),
         ]);

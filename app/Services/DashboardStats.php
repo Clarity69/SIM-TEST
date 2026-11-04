@@ -46,13 +46,19 @@ class DashboardStats
     {
         $batas = now()->subDays(30);
 
-        $agregat = Mahasiswa::query()
-            ->selectRaw('COUNT(*) AS total')
-            ->selectRaw("COUNT(*) FILTER (WHERE jenis_kelamin = 'Laki-laki') AS laki")
-            ->selectRaw("COUNT(*) FILTER (WHERE jenis_kelamin = 'Perempuan') AS perempuan")
-            ->selectRaw('COUNT(*) FILTER (WHERE created_at <= ?) AS total_sebelum', [$batas])
-            ->selectRaw("COUNT(*) FILTER (WHERE created_at <= ? AND jenis_kelamin = 'Laki-laki') AS laki_sebelum", [$batas])
-            ->selectRaw("COUNT(*) FILTER (WHERE created_at <= ? AND jenis_kelamin = 'Perempuan') AS perempuan_sebelum", [$batas])
+        // withTrashed: populasi 30 hari lalu = data yang sudah ada saat itu dan belum
+        // dihapus saat itu. Dengan begitu menghapus 1 data selalu menurunkan tren,
+        // menambah 1 data selalu menaikkannya.
+        $ada = 'deleted_at IS NULL';
+        $adaSaatItu = 'created_at <= ? AND (deleted_at IS NULL OR deleted_at > ?)';
+
+        $agregat = Mahasiswa::withTrashed()
+            ->selectRaw("COUNT(*) FILTER (WHERE {$ada}) AS total")
+            ->selectRaw("COUNT(*) FILTER (WHERE {$ada} AND jenis_kelamin = 'Laki-laki') AS laki")
+            ->selectRaw("COUNT(*) FILTER (WHERE {$ada} AND jenis_kelamin = 'Perempuan') AS perempuan")
+            ->selectRaw("COUNT(*) FILTER (WHERE {$adaSaatItu}) AS total_sebelum", [$batas, $batas])
+            ->selectRaw("COUNT(*) FILTER (WHERE {$adaSaatItu} AND jenis_kelamin = 'Laki-laki') AS laki_sebelum", [$batas, $batas])
+            ->selectRaw("COUNT(*) FILTER (WHERE {$adaSaatItu} AND jenis_kelamin = 'Perempuan') AS perempuan_sebelum", [$batas, $batas])
             ->toBase()
             ->first();
 

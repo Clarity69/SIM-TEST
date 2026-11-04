@@ -94,10 +94,11 @@ class ProdiController extends Controller
      */
     public function destroy(Prodi $prodi)
     {
-        if ($prodi->mahasiswas()->exists()) {
+        // Termasuk mahasiswa di Sampah: foreign key tetap menunjuk ke prodi ini.
+        if ($prodi->mahasiswas()->withTrashed()->exists()) {
             return back()->with(
                 'error',
-                'Prodi tidak dapat dihapus karena masih digunakan mahasiswa.'
+                'Prodi tidak dapat dihapus karena masih digunakan mahasiswa (termasuk yang ada di Sampah).'
             );
         }
 

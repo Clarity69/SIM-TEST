@@ -32,7 +32,7 @@ class MahasiswaRequest extends FormRequest
                 'required',
                 'string',
                 'max:30',
-                Rule::unique('mahasiswas', 'nim')->ignore($mahasiswa?->id),
+                Rule::unique('mahasiswas', 'nim')->ignore($mahasiswa?->id)->withoutTrashed(),
             ],
             'nama' => ['required', 'string', 'max:255'],
             'jenis_kelamin' => ['required', Rule::in(Mahasiswa::JENIS_KELAMIN)],

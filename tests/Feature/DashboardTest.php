@@ -67,4 +67,42 @@ class DashboardTest extends TestCase
         $this->actingAs($user)->get(route('dashboard'))->assertOk();
         $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertViewHas('totalMahasiswa', 2);
     }
+
+    public function test_deleting_lowers_trend_and_adding_raises_it_even_for_old_records(): void
+    {
+        $prodi = Prodi::factory()->create();
+        $lama = Mahasiswa::factory()->count(4)->for($prodi)->create(['created_at' => now()->subDays(60)]);
+        Mahasiswa::factory()->count(2)->for($prodi)->create();
+        $stats = app(DashboardStats::class);
+        $tren = fn () => DashboardStats::perubahan($stats->get()['total'], $stats->get()['sebelum']['total']);
+
+        $awal = $tren();
+        $this->assertSame(50.0, $awal);
+
+        $lama->first()->delete();
+        $setelahHapus = $tren();
+        $this->assertLessThan($awal, $setelahHapus);
+        $this->assertSame(4, $stats->get()['sebelum']['total']);
+
+        Mahasiswa::factory()->for($prodi)->create();
+        $this->assertGreaterThan($setelahHapus, $tren());
+    }
+
+    public function test_deleted_nim_can_be_registered_again(): void
+    {
+        $prodi = Prodi::factory()->create();
+        Mahasiswa::factory()->for($prodi)->create(['nim' => '202412001'])->delete();
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('mahasiswa.store'), [
+                'nim' => '202412001',
+                'nama' => 'Mahasiswa Baru',
+                'jenis_kelamin' => 'Perempuan',
+                'prodi_id' => $prodi->id,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(1, Mahasiswa::where('nim', '202412001')->count());
+        $this->assertSame(2, Mahasiswa::withTrashed()->where('nim', '202412001')->count());
+    }
 }

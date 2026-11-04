@@ -183,7 +183,7 @@ class MahasiswaTest extends TestCase
             ->delete(route('mahasiswa.destroy', $mahasiswa))
             ->assertRedirect(route('mahasiswa.index'));
 
-        $this->assertModelMissing($mahasiswa);
+        $this->assertSoftDeleted($mahasiswa);
         Notification::assertSentTo($user, MahasiswaChanged::class, fn (MahasiswaChanged $n) => $n->aksi === 'dihapus'
             && $n->mahasiswa['nim'] === '202412055');
     }
