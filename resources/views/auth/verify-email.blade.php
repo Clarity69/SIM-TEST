@@ -1,31 +1,22 @@
-<x-guest-layout>
-    <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-        {{ __('Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
-    </div>
+<x-guest-layout title="Verifikasi Email" tagline="Satu langkah lagi sebelum mulai.">
+    <span class="grid size-12 place-items-center rounded-2xl bg-primary-50 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300"><x-icon name="mail" class="size-6" /></span>
+    <h1 class="mt-5 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Verifikasi email Anda</h1>
+    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Kami sudah mengirim tautan verifikasi ke <strong class="text-slate-700 dark:text-slate-200">{{ auth()->user()->email }}</strong>. Klik tautan tersebut untuk membuka dashboard.</p>
 
     @if (session('status') == 'verification-link-sent')
-        <div class="mb-4 font-medium text-sm text-green-600 dark:text-green-400">
-            {{ __('A new verification link has been sent to the email address you provided during registration.') }}
+        <div class="mt-6 flex gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200" role="status">
+            <x-icon name="circle-check" class="size-4 shrink-0 translate-y-0.5" /> Tautan verifikasi baru sudah dikirim.
         </div>
     @endif
 
-    <div class="mt-4 flex items-center justify-between">
-        <form method="POST" action="{{ route('verification.send') }}">
+    <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+        <form method="POST" action="{{ route('verification.send') }}" class="flex-1" x-data="{ submitting: false }" x-on:submit="submitting = true">
             @csrf
-
-            <div>
-                <x-primary-button>
-                    {{ __('Resend Verification Email') }}
-                </x-primary-button>
-            </div>
+            <x-button type="submit" class="w-full" icon="send" :loading="true">Kirim ulang tautan</x-button>
         </form>
-
         <form method="POST" action="{{ route('logout') }}">
             @csrf
-
-            <button type="submit" class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
-                {{ __('Log Out') }}
-            </button>
+            <x-button type="submit" variant="secondary" class="w-full" icon="log-out">Keluar</x-button>
         </form>
     </div>
 </x-guest-layout>
