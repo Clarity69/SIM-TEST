@@ -3,13 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\MahasiswaRequest;
+use App\Mail\MahasiswaPdfMail;
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\User;
+use App\Notifications\MahasiswaChanged;
+use App\Services\MahasiswaPdf;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\View\View;
 
 class MahasiswaController extends Controller
@@ -46,7 +51,9 @@ class MahasiswaController extends Controller
      */
     public function store(MahasiswaRequest $request): RedirectResponse
     {
-        Mahasiswa::create($request->validated());
+        $mahasiswa = Mahasiswa::create($request->validated());
+
+        $this->notifyAdmins('ditambahkan', $mahasiswa, $request);
 
         return redirect()
             ->route('mahasiswa.index')
@@ -88,9 +95,11 @@ class MahasiswaController extends Controller
     /**
      * Menghapus data mahasiswa.
      */
-    public function destroy(Mahasiswa $mahasiswa)
+    public function destroy(Request $request, Mahasiswa $mahasiswa): RedirectResponse
     {
         $mahasiswa->delete();
+
+        $this->notifyAdmins('dihapus', $mahasiswa, $request);
 
         return redirect()
             ->route('mahasiswa.index')
@@ -98,27 +107,75 @@ class MahasiswaController extends Controller
     }
 
     /**
-     * Export laporan PDF mengikuti pencarian, filter, dan sorting yang aktif.
+     * Tampilkan laporan PDF mengikuti pencarian, filter, dan sorting yang aktif.
      */
-    public function pdf(Request $request): Response
+    public function pdf(Request $request, MahasiswaPdf $pdf): Response
     {
-        $mahasiswas = Mahasiswa::query()
-            ->select('id', 'nim', 'nama', 'jenis_kelamin', 'tanggal_lahir', 'telepon', 'email', 'prodi_id', 'created_at')
-            ->with('prodi:id,kode_prodi,singkatan,nama_prodi')
-            ->filter($this->filters($request))
-            ->get();
+        $filters = $this->filters($request);
 
-        $prodi = $request->filled('prodi_id') ? Prodi::find($request->integer('prodi_id')) : null;
+        return $pdf->daftar($filters)->stream($pdf->namaFileDaftar($filters));
+    }
 
-        $pdf = Pdf::loadView('mahasiswa.pdf', [
-            'mahasiswas' => $mahasiswas,
-            'namaProdi' => $prodi?->nama_prodi ?? 'Semua Program Studi',
-            'search' => $request->input('search'),
-        ]);
+    /**
+     * Tampilkan PDF biodata satu mahasiswa.
+     */
+    public function pdfShow(Mahasiswa $mahasiswa, MahasiswaPdf $pdf): Response
+    {
+        return $pdf->detail($mahasiswa)->stream($pdf->namaFileDetail($mahasiswa));
+    }
 
-        $pdf->setPaper('a4', 'landscape');
+    /**
+     * Kirim PDF daftar (sesuai filter aktif) ke email, diproses lewat queue.
+     */
+    public function emailPdf(Request $request): RedirectResponse
+    {
+        $email = $this->recipient($request);
 
-        return $pdf->stream('data-mahasiswa.pdf');
+        Mail::to($email)->queue(new MahasiswaPdfMail($request->user()->name, $this->filters($request)));
+
+        return back()->with('success', "Laporan PDF sedang dikirim ke {$email}.");
+    }
+
+    /**
+     * Kirim PDF biodata satu mahasiswa ke email, diproses lewat queue.
+     */
+    public function emailPdfShow(Request $request, Mahasiswa $mahasiswa): RedirectResponse
+    {
+        $email = $this->recipient($request);
+
+        Mail::to($email)->queue(new MahasiswaPdfMail($request->user()->name, mahasiswa: $mahasiswa));
+
+        return back()->with('success', "Biodata {$mahasiswa->nama} sedang dikirim ke {$email}.");
+    }
+
+    /**
+     * Alamat tujuan: input `email` bila diisi, selain itu email user yang login.
+     */
+    private function recipient(Request $request): string
+    {
+        $validated = $request->validate(['email' => ['nullable', 'email', 'max:255']]);
+
+        return $validated['email'] ?? $request->user()->email;
+    }
+
+    /**
+     * Beri tahu user yang mengaktifkan notifikasi perubahan data (lewat queue).
+     */
+    private function notifyAdmins(string $aksi, Mahasiswa $mahasiswa, Request $request): void
+    {
+        $penerima = User::query()->where('notify_mahasiswa_changes', true)->get();
+
+        if ($penerima->isEmpty()) {
+            return;
+        }
+
+        Notification::send($penerima, new MahasiswaChanged($aksi, [
+            'id' => $mahasiswa->id,
+            'nim' => $mahasiswa->nim,
+            'nama' => $mahasiswa->nama,
+            'jenis_kelamin' => $mahasiswa->jenis_kelamin,
+            'prodi' => $mahasiswa->prodi()->value('nama_prodi'),
+        ], $request->user()->name));
     }
 
     /**

@@ -13,10 +13,15 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Akun admin bawaan (aman dijalankan berulang).
-        User::firstOrCreate(
+        // Email admin dianggap sudah terverifikasi agar bisa langsung login ke dashboard.
+        $admin = User::firstOrCreate(
             ['email' => 'admin@example.com'],
             ['name' => 'Administrator', 'password' => 'password123'],
         );
+
+        if (! $admin->hasVerifiedEmail()) {
+            $admin->markEmailAsVerified();
+        }
 
         $this->call([
             ProdiSeeder::class,

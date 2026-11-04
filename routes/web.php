@@ -17,25 +17,34 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
-// Group Route yang Membutuhkan Autentikasi (Login)
-Route::middleware(['auth'])->group(function () {
-    
+// Halaman data: wajib login dan email sudah diverifikasi
+Route::middleware(['auth', 'verified'])->group(function () {
+
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Export PDF Mahasiswa (Wajib diletakkan SEBELUM resource route)
+    // Cetak & kirim PDF (wajib diletakkan SEBELUM resource route)
     Route::get('/mahasiswa/pdf', [MahasiswaController::class, 'pdf'])->name('mahasiswa.pdf');
+    Route::post('/mahasiswa/pdf/email', [MahasiswaController::class, 'emailPdf'])
+        ->middleware('throttle:5,1')
+        ->name('mahasiswa.pdf.email');
+    Route::get('/mahasiswa/{mahasiswa}/pdf', [MahasiswaController::class, 'pdfShow'])->name('mahasiswa.pdf.show');
+    Route::post('/mahasiswa/{mahasiswa}/pdf/email', [MahasiswaController::class, 'emailPdfShow'])
+        ->middleware('throttle:5,1')
+        ->name('mahasiswa.pdf.show.email');
 
     // Resource CRUD Mahasiswa & Prodi
     Route::resource('mahasiswa', MahasiswaController::class);
     Route::resource('prodi', ProdiController::class);
+});
 
-    // Profile Management
+// Profil: cukup login (user yang belum verifikasi tetap bisa memperbaiki email)
+Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
-
+    Route::patch('/profile/notifications', [ProfileController::class, 'updateNotifications'])->name('profile.notifications.update');
 });
 
-// Route Autentikasi dari Laravel Breeze (Login, Register, Logout, Reset Password)
-require __DIR__ . '/auth.php';
+// Route Autentikasi dari Laravel Breeze (Login, Register, Logout, Reset Password, Verifikasi)
+require __DIR__.'/auth.php';

@@ -26,7 +26,7 @@ class ProfileController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'name'  => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',
                 'string',
@@ -55,7 +55,7 @@ class ProfileController extends Controller
     {
         $validated = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password'         => ['required', 'confirmed', 'min:8'],
+            'password' => ['required', 'confirmed', 'min:8'],
         ]);
 
         $request->user()->update([
@@ -63,5 +63,17 @@ class ProfileController extends Controller
         ]);
 
         return back()->with('success', 'Password berhasil diperbarui.');
+    }
+
+    /**
+     * Preferensi notifikasi email perubahan data mahasiswa.
+     */
+    public function updateNotifications(Request $request)
+    {
+        $request->user()->update([
+            'notify_mahasiswa_changes' => $request->boolean('notify_mahasiswa_changes'),
+        ]);
+
+        return back()->with('success', 'Preferensi notifikasi berhasil disimpan.');
     }
 }
