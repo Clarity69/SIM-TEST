@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
@@ -45,7 +47,7 @@ class ProfileController extends Controller
 
         $user->save();
 
-        return back()->with('success', 'Informasi profile berhasil diperbarui.');
+        return redirect()->route('profile.edit')->with('success', 'Informasi profil berhasil diperbarui.');
     }
 
     /**
@@ -62,7 +64,7 @@ class ProfileController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        return back()->with('success', 'Password berhasil diperbarui.');
+        return redirect()->route('profile.edit')->with('success', 'Password berhasil diperbarui.');
     }
 
     /**
@@ -74,6 +76,27 @@ class ProfileController extends Controller
             'notify_mahasiswa_changes' => $request->boolean('notify_mahasiswa_changes'),
         ]);
 
-        return back()->with('success', 'Preferensi notifikasi berhasil disimpan.');
+        return redirect()->route('profile.edit')->with('success', 'Preferensi notifikasi berhasil disimpan.');
+    }
+
+    /**
+     * Hapus akun user yang sedang login (wajib konfirmasi password).
+     */
+    public function destroy(Request $request): RedirectResponse
+    {
+        $request->validateWithBag('userDeletion', [
+            'password' => ['required', 'current_password'],
+        ]);
+
+        $user = $request->user();
+
+        Auth::logout();
+
+        $user->delete();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/');
     }
 }
