@@ -108,4 +108,20 @@ class DashboardTest extends TestCase
         $this->assertSame(1, Mahasiswa::where('nim', '202412001')->count());
         $this->assertSame(2, Mahasiswa::withTrashed()->where('nim', '202412001')->count());
     }
+
+    public function test_dashboard_shows_rekap_per_prodi_with_gender_split(): void
+    {
+        $ti = Prodi::factory()->create(['nama_prodi' => 'Teknik Informatika', 'singkatan' => 'TI', 'kaprodi' => 'Rianindya Chandra Hardika, S.T., M.Eng']);
+        Prodi::factory()->create(['nama_prodi' => 'Teknik Industri', 'singkatan' => 'TIN']);
+        Mahasiswa::factory()->count(3)->for($ti)->lakiLaki()->create();
+        Mahasiswa::factory()->for($ti)->perempuan()->create();
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Rekapitulasi Program Studi')
+            ->assertSee('Teknik Informatika: 4 dari 4 mahasiswa, 3 laki-laki dan 1 perempuan')
+            ->assertSee('Kaprodi: Rianindya Chandra Hardika, S.T., M.Eng')
+            ->assertSee('Teknik Industri: 0 dari 4 mahasiswa', false);
+    }
 }

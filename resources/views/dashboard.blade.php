@@ -64,6 +64,50 @@
         </x-card>
     </div>
 
+    <x-card title="Rekapitulasi Program Studi" description="Jumlah dan komposisi mahasiswa di setiap program studi">
+        <x-slot:actions>
+            <div class="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400" aria-hidden="true">
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-primary-600 dark:bg-primary-400"></span> Laki-laki</span>
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-secondary-500"></span> Perempuan</span>
+            </div>
+        </x-slot:actions>
+
+        <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+            @foreach ($mahasiswaPerProdi as $prodi)
+                @php
+                    $persen = $totalMahasiswa > 0 ? $prodi['mahasiswas_count'] / $totalMahasiswa * 100 : 0;
+                    $persenL = $prodi['mahasiswas_count'] > 0 ? $prodi['laki_count'] / $prodi['mahasiswas_count'] * 100 : 0;
+                @endphp
+                <li class="py-4 first:pt-0 last:pb-0">
+                    <div class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                        <div class="flex min-w-0 items-center gap-2.5">
+                            <x-badge tone="primary" class="w-11 justify-center">{{ $prodi['label'] }}</x-badge>
+                            <a href="{{ route('prodi.show', $prodi['id']) }}" class="truncate text-sm font-semibold text-slate-900 hover:text-primary-700 dark:text-white dark:hover:text-primary-300">{{ $prodi['nama_prodi'] }}</a>
+                        </div>
+                        <p class="text-sm tabular-nums text-slate-600 dark:text-slate-300">
+                            <span class="font-semibold text-slate-900 dark:text-white">{{ $prodi['mahasiswas_count'] }}</span> mahasiswa
+                            <span class="text-slate-400">·</span> {{ number_format($persen, 1, ',', '.') }}%
+                        </p>
+                    </div>
+
+                    <div class="mt-2.5 h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+                        role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ round($persen, 1) }}"
+                        aria-label="{{ $prodi['nama_prodi'] }}: {{ $prodi['mahasiswas_count'] }} dari {{ $totalMahasiswa }} mahasiswa, {{ $prodi['laki_count'] }} laki-laki dan {{ $prodi['perempuan_count'] }} perempuan">
+                        <div class="flex h-full overflow-hidden rounded-full transition-[width] duration-700" style="width: {{ $persen }}%">
+                            <span class="h-full bg-primary-600 dark:bg-primary-400" style="width: {{ $persenL }}%"></span>
+                            <span class="h-full flex-1 bg-secondary-500"></span>
+                        </div>
+                    </div>
+
+                    <div class="mt-1.5 flex flex-wrap justify-between gap-x-4 text-xs text-slate-500 dark:text-slate-400">
+                        <span>L {{ $prodi['laki_count'] }} · P {{ $prodi['perempuan_count'] }}</span>
+                        <span>{{ $prodi['kaprodi'] ? 'Kaprodi: '.$prodi['kaprodi'] : 'Kaprodi belum diisi' }}</span>
+                    </div>
+                </li>
+            @endforeach
+        </ul>
+    </x-card>
+
     <x-card title="Mahasiswa Terbaru" description="5 data terakhir yang ditambahkan" :padding="false">
         <x-slot:actions>
             <a href="{{ route('mahasiswa.index') }}" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-700 hover:text-primary-800 dark:text-primary-300">

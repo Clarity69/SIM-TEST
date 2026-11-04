@@ -25,7 +25,7 @@ class DashboardStats
      *     total: int, laki: int, perempuan: int, totalProdi: int,
      *     sebelum: array{total: int, laki: int, perempuan: int, prodi: int},
      *     terakhir: array{total: ?string, laki: ?string, perempuan: ?string, prodi: ?string},
-     *     perProdi: list<array{id: int, label: string, nama_prodi: string, mahasiswas_count: int}>,
+     *     perProdi: list<array{id: int, label: string, nama_prodi: string, kaprodi: ?string, mahasiswas_count: int, laki_count: int, perempuan_count: int}>,
      *     terbaru: list<array{id: int, nim: string, nama: string, jenis_kelamin: string, prodi: string, created_at: string}>
      * }
      */
@@ -82,8 +82,12 @@ class DashboardStats
         $agregat = $agregat->first();
 
         $perProdi = Prodi::query()
-            ->select('id', 'kode_prodi', 'singkatan', 'nama_prodi', 'created_at')
-            ->withCount('mahasiswas')
+            ->select('id', 'kode_prodi', 'singkatan', 'nama_prodi', 'kaprodi', 'created_at')
+            ->withCount([
+                'mahasiswas',
+                'mahasiswas as laki_count' => fn ($q) => $q->where('jenis_kelamin', 'Laki-laki'),
+                'mahasiswas as perempuan_count' => fn ($q) => $q->where('jenis_kelamin', 'Perempuan'),
+            ])
             ->orderByDesc('mahasiswas_count')
             ->orderBy('nama_prodi')
             ->get();
@@ -117,7 +121,10 @@ class DashboardStats
                 'id' => $prodi->id,
                 'label' => $prodi->label(),
                 'nama_prodi' => $prodi->nama_prodi,
+                'kaprodi' => $prodi->kaprodi,
                 'mahasiswas_count' => (int) $prodi->mahasiswas_count,
+                'laki_count' => (int) $prodi->laki_count,
+                'perempuan_count' => (int) $prodi->perempuan_count,
             ])->all(),
             'terbaru' => $terbaru->map(fn (Mahasiswa $mahasiswa) => [
                 'id' => $mahasiswa->id,
