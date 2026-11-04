@@ -41,7 +41,21 @@ class MahasiswaRequest extends FormRequest
             'telepon' => ['nullable', 'string', 'max:20'],
             'email' => ['nullable', 'email', 'max:255'],
             'prodi_id' => ['required', 'integer', 'exists:prodis,id'],
+            'angkatan' => ['nullable', 'integer', 'between:2000,'.(now()->year + 1)],
+            'status' => ['required', Rule::in(array_keys(Mahasiswa::STATUS))],
+            'foto' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'dimensions:min_width=100,min_height=100'],
+            'hapus_foto' => ['nullable', 'boolean'],
         ];
+    }
+
+    /**
+     * Status default Aktif bila form/impor tidak mengirimkannya.
+     */
+    protected function prepareForValidation(): void
+    {
+        if (blank($this->input('status'))) {
+            $this->merge(['status' => 'Aktif']);
+        }
     }
 
     /**
@@ -55,6 +69,7 @@ class MahasiswaRequest extends FormRequest
             'jenis_kelamin' => 'jenis kelamin',
             'tanggal_lahir' => 'tanggal lahir',
             'prodi_id' => 'program studi',
+            'foto' => 'foto',
         ];
     }
 }

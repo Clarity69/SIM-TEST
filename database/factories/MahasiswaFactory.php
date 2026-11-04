@@ -34,6 +34,8 @@ class MahasiswaFactory extends Factory
             'telepon' => $faker->numerify('08##########'),
             'email' => $faker->unique()->safeEmail(),
             'prodi_id' => Prodi::factory(),
+            'angkatan' => 2024,
+            'status' => $faker->randomElement(['Aktif', 'Aktif', 'Aktif', 'Aktif', 'Aktif', 'Aktif', 'Cuti', 'Lulus', 'Keluar']),
         ];
     }
 

@@ -1,5 +1,5 @@
 {{-- Potongan tabel: dipakai halaman index dan respons pencarian live (AJAX). --}}
-@php($adaFilter = request()->filled('search') || request()->filled('prodi_id') || request()->filled('jenis_kelamin'))
+@php($adaFilter = request()->hasAny(['search', 'prodi_id', 'jenis_kelamin', 'status', 'angkatan']) && collect(request()->only(['search', 'prodi_id', 'jenis_kelamin', 'status', 'angkatan']))->filter()->isNotEmpty())
 
 @if ($mahasiswas->isEmpty())
     @if ($adaFilter)
@@ -20,7 +20,8 @@
                     <x-th-sort column="nim" label="NIM" />
                     <x-th-sort column="nama" label="Nama" />
                     <x-th-sort column="prodi" label="Program Studi" />
-                    <x-th-sort column="jenis_kelamin" label="Jenis Kelamin" />
+                    <x-th-sort column="angkatan" label="Angkatan" />
+                    <x-th-sort column="status" label="Status" />
                     <th scope="col" class="table-th text-right"><span class="sr-only">Aksi</span></th>
                 </tr>
             </thead>
@@ -30,15 +31,19 @@
                         <td class="table-td whitespace-nowrap font-medium tabular-nums text-slate-900 dark:text-white">{{ $mahasiswa->nim }}</td>
                         <td class="table-td">
                             <div class="flex items-center gap-3">
-                                <x-avatar :name="$mahasiswa->nama" :jenis-kelamin="$mahasiswa->jenis_kelamin" />
-                                <a href="{{ route('mahasiswa.show', $mahasiswa) }}" class="font-medium text-slate-900 hover:text-primary-700 dark:text-white dark:hover:text-primary-300">{{ $mahasiswa->nama }}</a>
+                                <x-avatar :name="$mahasiswa->nama" :jenis-kelamin="$mahasiswa->jenis_kelamin" :src="$mahasiswa->fotoUrl()" />
+                                <div class="min-w-0">
+                                    <a href="{{ route('mahasiswa.show', $mahasiswa) }}" class="font-medium text-slate-900 hover:text-primary-700 dark:text-white dark:hover:text-primary-300">{{ $mahasiswa->nama }}</a>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ $mahasiswa->jenis_kelamin }}</p>
+                                </div>
                             </div>
                         </td>
                         <td class="table-td text-slate-600 dark:text-slate-300">
                             <span class="hidden md:inline">{{ $mahasiswa->prodi->nama_prodi }}</span>
                             <span class="md:hidden">{{ $mahasiswa->prodi->label() }}</span>
                         </td>
-                        <td class="table-td"><x-badge :tone="$mahasiswa->jenis_kelamin === 'Laki-laki' ? 'primary' : 'secondary'">{{ $mahasiswa->jenis_kelamin }}</x-badge></td>
+                        <td class="table-td tabular-nums text-slate-700 dark:text-slate-200">{{ $mahasiswa->angkatan ?? '—' }}</td>
+                        <td class="table-td"><x-badge :tone="\App\Models\Mahasiswa::STATUS[$mahasiswa->status] ?? 'neutral'">{{ $mahasiswa->status }}</x-badge></td>
                         <td class="table-td">
                             <div class="flex justify-end gap-1">
                                 <x-button variant="ghost" size="icon" :href="route('mahasiswa.show', $mahasiswa)" title="Lihat detail">

@@ -22,7 +22,7 @@ class MahasiswaPdf
     public function daftar(array $filters): DomPdf
     {
         $mahasiswas = Mahasiswa::query()
-            ->select('id', 'nim', 'nama', 'jenis_kelamin', 'tanggal_lahir', 'telepon', 'email', 'prodi_id', 'created_at')
+            ->select('id', 'nim', 'nama', 'jenis_kelamin', 'tanggal_lahir', 'telepon', 'email', 'prodi_id', 'angkatan', 'status', 'created_at')
             ->with('prodi:id,kode_prodi,singkatan,nama_prodi')
             ->filter($filters)
             ->get();
@@ -35,6 +35,8 @@ class MahasiswaPdf
             'filter' => [
                 'search' => $filters['search'] ?? null,
                 'jenis_kelamin' => in_array($filters['jenis_kelamin'] ?? null, Mahasiswa::JENIS_KELAMIN, true) ? $filters['jenis_kelamin'] : null,
+                'status' => array_key_exists($filters['status'] ?? '', Mahasiswa::STATUS) ? $filters['status'] : null,
+                'angkatan' => filled($filters['angkatan'] ?? null) ? (int) $filters['angkatan'] : null,
             ],
             'penandatangan' => $this->penandatangan($prodi),
         ])->setPaper('a4', 'landscape');

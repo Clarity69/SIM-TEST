@@ -8,6 +8,7 @@ use App\Models\Mahasiswa;
 use App\Models\Prodi;
 use App\Models\User;
 use App\Notifications\MahasiswaChanged;
+use App\Services\FotoMahasiswa;
 use App\Services\MahasiswaPdf;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -34,8 +35,9 @@ class MahasiswaController extends Controller
         }
 
         $prodis = $this->prodiOptions();
+        $angkatans = Mahasiswa::opsiAngkatan();
 
-        return view('mahasiswa.index', compact('mahasiswas', 'prodis'));
+        return view('mahasiswa.index', compact('mahasiswas', 'prodis', 'angkatans'));
     }
 
     /**
@@ -51,9 +53,15 @@ class MahasiswaController extends Controller
     /**
      * Menyimpan data mahasiswa baru.
      */
-    public function store(MahasiswaRequest $request): RedirectResponse
+    public function store(MahasiswaRequest $request, FotoMahasiswa $foto): RedirectResponse
     {
-        $mahasiswa = Mahasiswa::create($request->validated());
+        $mahasiswa = new Mahasiswa($request->safe()->except(['foto', 'hapus_foto']));
+
+        if ($request->hasFile('foto')) {
+            $mahasiswa->foto = $foto->simpan($request->file('foto'));
+        }
+
+        $mahasiswa->save();
 
         $this->notifyAdmins('ditambahkan', $mahasiswa, $request);
 
@@ -85,9 +93,22 @@ class MahasiswaController extends Controller
     /**
      * Mengubah data mahasiswa.
      */
-    public function update(MahasiswaRequest $request, Mahasiswa $mahasiswa): RedirectResponse
+    public function update(MahasiswaRequest $request, Mahasiswa $mahasiswa, FotoMahasiswa $foto): RedirectResponse
     {
-        $mahasiswa->update($request->validated());
+        $mahasiswa->fill($request->safe()->except(['foto', 'hapus_foto']));
+        $fotoLama = $mahasiswa->foto;
+
+        if ($request->hasFile('foto')) {
+            $mahasiswa->foto = $foto->simpan($request->file('foto'));
+        } elseif ($request->boolean('hapus_foto')) {
+            $mahasiswa->foto = null;
+        }
+
+        $mahasiswa->save();
+
+        if ($fotoLama && $fotoLama !== $mahasiswa->foto) {
+            $foto->hapus($fotoLama);
+        }
 
         return redirect()
             ->route('mahasiswa.index')
@@ -99,13 +120,15 @@ class MahasiswaController extends Controller
      */
     public function destroy(Request $request, Mahasiswa $mahasiswa): RedirectResponse
     {
+        // Dipindah ke Sampah (soft delete); catat siapa yang menghapus.
+        $mahasiswa->forceFill(['deleted_by' => $request->user()->id])->saveQuietly();
         $mahasiswa->delete();
 
         $this->notifyAdmins('dihapus', $mahasiswa, $request);
 
         return redirect()
             ->route('mahasiswa.index')
-            ->with('success', 'Data mahasiswa berhasil dihapus.');
+            ->with('success', 'Data mahasiswa dipindahkan ke Sampah.');
     }
 
     /**
@@ -202,7 +225,7 @@ class MahasiswaController extends Controller
         ['rows' => $rows, 'total' => $total] = Cache::remember($kunci, 600, function () use ($filters, $page, $perPage) {
             $rows = Mahasiswa::query()
                 ->join('prodis', 'prodis.id', '=', 'mahasiswas.prodi_id')
-                ->select('mahasiswas.id', 'mahasiswas.nim', 'mahasiswas.nama', 'mahasiswas.jenis_kelamin', 'mahasiswas.prodi_id', 'mahasiswas.created_at')
+                ->select('mahasiswas.id', 'mahasiswas.nim', 'mahasiswas.nama', 'mahasiswas.jenis_kelamin', 'mahasiswas.prodi_id', 'mahasiswas.angkatan', 'mahasiswas.status', 'mahasiswas.foto', 'mahasiswas.created_at')
                 ->addSelect('prodis.kode_prodi as prodi_kode', 'prodis.singkatan as prodi_singkatan', 'prodis.nama_prodi as prodi_nama')
                 ->selectRaw('COUNT(*) OVER () AS total_baris')
                 ->filter($filters)
@@ -242,7 +265,7 @@ class MahasiswaController extends Controller
     /**
      * Ambil parameter pencarian/filter/sorting dari query string.
      *
-     * @return array{search: ?string, prodi_id: ?string, jenis_kelamin: ?string, sort: ?string, direction: ?string}
+     * @return array{search: ?string, prodi_id: ?string, jenis_kelamin: ?string, status: ?string, angkatan: ?string, sort: ?string, direction: ?string}
      */
     private function filters(Request $request): array
     {
@@ -250,6 +273,8 @@ class MahasiswaController extends Controller
             'search' => $request->string('search')->trim()->toString() ?: null,
             'prodi_id' => $request->input('prodi_id'),
             'jenis_kelamin' => $request->input('jenis_kelamin'),
+            'status' => $request->input('status'),
+            'angkatan' => $request->input('angkatan'),
             'sort' => $request->input('sort'),
             'direction' => $request->input('direction'),
         ];

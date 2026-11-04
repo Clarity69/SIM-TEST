@@ -13,12 +13,12 @@
 
         <section class="card" aria-label="Tabel data mahasiswa">
             <form x-ref="form" method="GET" action="{{ route('mahasiswa.index') }}" role="search"
-                class="flex flex-col gap-3 border-b border-slate-200 p-4 sm:p-5 lg:flex-row lg:items-end dark:border-slate-800"
+                class="flex flex-col gap-3 border-b border-slate-200 p-4 sm:p-5 lg:flex-row lg:flex-wrap lg:items-end dark:border-slate-800"
                 x-on:submit.prevent="submit()">
                 <input type="hidden" name="sort" value="{{ request('sort') }}">
                 <input type="hidden" name="direction" value="{{ request('direction') }}">
 
-                <div class="relative flex-1">
+                <div class="relative flex-1 lg:min-w-64">
                     <label for="search" class="sr-only">Cari NIM atau nama</label>
                     {{-- Posisi diatur span pembungkus; animate-spin memakai transform sendiri
                          sehingga tidak boleh digabung dengan -translate-y-1/2 di elemen yang sama. --}}
@@ -30,11 +30,17 @@
                         class="form-control pl-9" autocomplete="off" x-on:input="queue()">
                 </div>
 
-                <x-select name="prodi_id" label="Program studi" :sr-only-label="true" class="lg:w-56" placeholder="Semua program studi"
+                <x-select name="prodi_id" label="Program studi" :sr-only-label="true" class="lg:w-52" placeholder="Semua program studi"
                     :options="$prodis->pluck('nama_prodi', 'id')" :value="request('prodi_id')" x-on:change="submit()" />
 
-                <x-select name="jenis_kelamin" label="Jenis kelamin" :sr-only-label="true" class="lg:w-52" placeholder="Semua jenis kelamin"
+                <x-select name="jenis_kelamin" label="Jenis kelamin" :sr-only-label="true" class="lg:w-44" placeholder="Semua gender"
                     :options="array_combine(\App\Models\Mahasiswa::JENIS_KELAMIN, \App\Models\Mahasiswa::JENIS_KELAMIN)" :value="request('jenis_kelamin')" x-on:change="submit()" />
+
+                <x-select name="status" label="Status" :sr-only-label="true" class="lg:w-40" placeholder="Semua status"
+                    :options="array_combine(array_keys(\App\Models\Mahasiswa::STATUS), array_keys(\App\Models\Mahasiswa::STATUS))" :value="request('status')" x-on:change="submit()" />
+
+                <x-select name="angkatan" label="Angkatan" :sr-only-label="true" class="lg:w-40" placeholder="Semua angkatan"
+                    :options="array_combine($angkatans, $angkatans)" :value="request('angkatan')" x-on:change="submit()" />
 
                 <div class="flex gap-2">
                     <noscript><x-button type="submit" icon="search">Cari</x-button></noscript>

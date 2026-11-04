@@ -28,6 +28,18 @@
                 <td>"{{ $filter['search'] }}"</td>
             </tr>
         @endif
+        @if (filled($filter['status'] ?? null))
+            <tr>
+                <td class="label">Status</td><td class="titik">:</td>
+                <td>{{ $filter['status'] }}</td>
+            </tr>
+        @endif
+        @if (filled($filter['angkatan'] ?? null))
+            <tr>
+                <td class="label">Angkatan</td><td class="titik">:</td>
+                <td>{{ $filter['angkatan'] }}</td>
+            </tr>
+        @endif
         @if (filled($filter['jenis_kelamin']))
             <tr>
                 <td class="label">Jenis Kelamin</td><td class="titik">:</td>
@@ -45,13 +57,15 @@
         <thead>
             <tr>
                 <th style="width: 4%;">No</th>
-                <th style="width: 12%;">NIM</th>
-                <th style="width: 22%;">Nama Mahasiswa</th>
-                <th style="width: 6%;">L/P</th>
-                <th style="width: 11%;">Tanggal Lahir</th>
-                <th style="width: 18%;">Program Studi</th>
-                <th style="width: 12%;">Telepon</th>
-                <th style="width: 15%;">Email</th>
+                <th style="width: 11%;">NIM</th>
+                <th style="width: 20%;">Nama Mahasiswa</th>
+                <th style="width: 5%;">L/P</th>
+                <th style="width: 7%;">Angkatan</th>
+                <th style="width: 7%;">Status</th>
+                <th style="width: 10%;">Tanggal Lahir</th>
+                <th style="width: 15%;">Program Studi</th>
+                <th style="width: 11%;">Telepon</th>
+                <th style="width: 10%;">Email</th>
             </tr>
         </thead>
         <tbody>
@@ -61,6 +75,8 @@
                     <td class="tengah">{{ $mhs->nim }}</td>
                     <td>{{ $mhs->nama }}</td>
                     <td class="tengah">{{ $mhs->jenis_kelamin === 'Laki-laki' ? 'L' : 'P' }}</td>
+                    <td class="tengah">{{ $mhs->angkatan ?? '-' }}</td>
+                    <td class="tengah">{{ $mhs->status }}</td>
                     <td class="tengah">
                         {{ $mhs->tanggal_lahir?->locale('id')->translatedFormat('d M Y') ?? '-' }}
                     </td>
@@ -70,7 +86,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="kosong">Tidak ada data mahasiswa.</td>
+                    <td colspan="10" class="kosong">Tidak ada data mahasiswa.</td>
                 </tr>
             @endforelse
         </tbody>

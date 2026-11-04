@@ -3,10 +3,11 @@
         <div class="h-24 bg-gradient-to-r from-primary-950 via-primary-800 to-primary-600" aria-hidden="true"></div>
         <div class="flex flex-col gap-4 px-5 pb-6 sm:flex-row sm:items-end sm:justify-between sm:px-6">
             <div class="-mt-10 flex items-end gap-4">
-                <x-avatar :name="$mahasiswa->nama" :jenis-kelamin="$mahasiswa->jenis_kelamin" size="lg" class="ring-4 ring-white dark:ring-slate-900" />
+                <x-avatar :name="$mahasiswa->nama" :jenis-kelamin="$mahasiswa->jenis_kelamin" :src="$mahasiswa->fotoUrl()" size="lg" class="size-20 ring-4 ring-white dark:ring-slate-900" />
                 <div class="pb-1">
                     <h1 class="text-xl font-bold text-slate-900 dark:text-white">{{ $mahasiswa->nama }}</h1>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ $mahasiswa->nim }} · {{ $mahasiswa->prodi->nama_prodi }}</p>
+                    <p class="flex flex-wrap items-center gap-2 text-sm text-slate-500 dark:text-slate-400">{{ $mahasiswa->nim }} · {{ $mahasiswa->prodi->nama_prodi }}
+                        <x-badge :tone="\App\Models\Mahasiswa::STATUS[$mahasiswa->status] ?? 'neutral'">{{ $mahasiswa->status }}</x-badge></p>
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
@@ -39,6 +40,8 @@
                 ['Akademik', 'graduation-cap', [
                     'Program studi' => $mahasiswa->prodi->nama_prodi,
                     'Kode prodi' => $mahasiswa->prodi->kode_prodi,
+                    'Angkatan' => $mahasiswa->angkatan,
+                    'Status' => $mahasiswa->status,
                     'Terdaftar sejak' => $mahasiswa->created_at?->locale('id')->translatedFormat('d F Y'),
                     'Terakhir diubah' => $mahasiswa->updated_at?->locale('id')->diffForHumans(),
                 ]],
