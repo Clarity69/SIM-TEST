@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MahasiswaController;
 use App\Http\Controllers\ProdiController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,6 +44,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/pengguna', [UserController::class, 'index'])->name('users.index');
         Route::patch('/pengguna/{user}/role', [UserController::class, 'updateRole'])->name('users.role');
         Route::delete('/pengguna/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+        Route::get('/sampah', [TrashController::class, 'index'])->name('trash.index');
+        Route::post('/sampah/aksi', [TrashController::class, 'bulk'])->name('trash.bulk');
+        Route::delete('/sampah', [TrashController::class, 'empty'])->name('trash.empty');
+        Route::patch('/sampah/{mahasiswa}/pulihkan', [TrashController::class, 'restore'])->name('trash.restore')->withTrashed();
+        Route::delete('/sampah/{mahasiswa}', [TrashController::class, 'destroy'])->name('trash.destroy')->withTrashed();
     });
 });
 

@@ -63,8 +63,11 @@ document.addEventListener('alpine:init', () => {
         action: '',
         method: 'DELETE',
         confirmLabel: 'Hapus',
-        ask({ title, message, action, method = 'DELETE', confirmLabel = 'Hapus' }) {
-            Object.assign(this, { title, message, action, method, confirmLabel, open: true });
+        tone: 'danger',
+        // Form milik halaman (mis. aksi massal) yang dikirim saat dikonfirmasi; null = form modal sendiri.
+        form: null,
+        ask({ title, message, action = '', method = 'DELETE', confirmLabel = 'Hapus', tone = 'danger', form = null }) {
+            Object.assign(this, { title, message, action, method, confirmLabel, tone, form, open: true });
         },
         close() {
             this.open = false;

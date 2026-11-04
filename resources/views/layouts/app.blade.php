@@ -53,6 +53,7 @@
                 <div class="space-y-1">
                     <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-primary-300" x-bind:class="$store.sidebar.collapsed ? 'lg:sr-only' : ''">Admin</p>
                     <x-sidebar-link :href="route('users.index')" icon="users" :active="request()->routeIs('users.*')">Pengguna</x-sidebar-link>
+                    <x-sidebar-link :href="route('trash.index')" icon="trash-2" :active="request()->routeIs('trash.*')">Sampah</x-sidebar-link>
                 </div>
             @endcan
             <div class="space-y-1">
