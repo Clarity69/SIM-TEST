@@ -33,7 +33,7 @@
                     <p class="mb-0">
                         <strong class="text-muted d-block small">Jumlah Mahasiswa:</strong>
                         <span class="badge bg-info bg-opacity-10 text-info px-3 py-2 rounded-pill fw-bold">
-                            {{ $prodi->mahasiswas->count() }} Mahasiswa
+                            {{ $mahasiswas->total() }} Mahasiswa
                         </span>
                     </p>
                 </div>
@@ -58,7 +58,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($prodi->mahasiswas as $mahasiswa)
+                            @forelse($mahasiswas as $mahasiswa)
                                 <tr>
                                     <td class="px-4 fw-semibold">{{ $mahasiswa->nim }}</td>
                                     <td class="fw-bold">{{ $mahasiswa->nama }}</td>
@@ -85,6 +85,9 @@
                         </tbody>
                     </table>
                 </div>
+                @if($mahasiswas->hasPages())
+                    <div class="px-4 py-3">{{ $mahasiswas->links() }}</div>
+                @endif
             </div>
         </div>
     </div>

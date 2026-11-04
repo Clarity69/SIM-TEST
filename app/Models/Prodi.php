@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Models\Mahasiswa;
+use App\Services\DashboardStats;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,9 +18,22 @@ class Prodi extends Model
      */
     protected $fillable = [
         'kode_prodi',
+        'singkatan',
         'nama_prodi',
         'fakultas',
+        'kaprodi',
+        'kaprodi_jabatan',
+        'kaprodi_nidn',
     ];
+
+    /**
+     * Statistik dashboard memuat jumlah dan label prodi, jadi ikut dibersihkan.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => DashboardStats::forget());
+        static::deleted(fn () => DashboardStats::forget());
+    }
 
     /**
      * Relasi ke model Mahasiswa (One-to-Many).
@@ -29,5 +42,13 @@ class Prodi extends Model
     public function mahasiswas(): HasMany
     {
         return $this->hasMany(Mahasiswa::class);
+    }
+
+    /**
+     * Label pendek untuk grafik/badge: singkatan bila ada, selain itu kode prodi.
+     */
+    public function label(): string
+    {
+        return $this->singkatan ?: $this->kode_prodi;
     }
 }

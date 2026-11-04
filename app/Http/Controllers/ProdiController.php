@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ProdiRequest;
 use App\Models\Prodi;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class ProdiController extends Controller
 {
@@ -17,16 +18,20 @@ class ProdiController extends Controller
 
         if ($request->filled('search')) {
             $search = trim($request->input('search'));
-            $query->where(function ($q) use ($search) {
-                $q->where('kode_prodi', 'like', "%{$search}%")
-                  ->orWhere('nama_prodi', 'like', "%{$search}%")
-                  ->orWhere('fakultas', 'like', "%{$search}%");
+            $operator = $query->getConnection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
+            $pattern = '%'.addcslashes($search, '%_\\').'%';
+
+            $query->where(function ($q) use ($operator, $pattern) {
+                $q->where('kode_prodi', $operator, $pattern)
+                    ->orWhere('singkatan', $operator, $pattern)
+                    ->orWhere('nama_prodi', $operator, $pattern)
+                    ->orWhere('fakultas', $operator, $pattern);
             });
         }
 
         $prodis = $query->orderBy('nama_prodi', 'asc')
-                        ->paginate(10)
-                        ->withQueryString();
+            ->paginate(10)
+            ->withQueryString();
 
         return view('prodi.index', compact('prodis'));
     }
@@ -42,28 +47,9 @@ class ProdiController extends Controller
     /**
      * Menyimpan data program studi baru.
      */
-    public function store(Request $request)
+    public function store(ProdiRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'kode_prodi' => [
-                'required',
-                'string',
-                'max:20',
-                'unique:prodis,kode_prodi',
-            ],
-            'nama_prodi' => [
-                'required',
-                'string',
-                'max:255',
-            ],
-            'fakultas' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-        ]);
-
-        Prodi::create($validated);
+        Prodi::create($request->validated());
 
         return redirect()
             ->route('prodi.index')
@@ -75,9 +61,12 @@ class ProdiController extends Controller
      */
     public function show(Prodi $prodi)
     {
-        $prodi->load('mahasiswas');
+        $mahasiswas = $prodi->mahasiswas()
+            ->select('id', 'nim', 'nama', 'jenis_kelamin', 'prodi_id')
+            ->orderBy('nama')
+            ->paginate(15);
 
-        return view('prodi.show', compact('prodi'));
+        return view('prodi.show', compact('prodi', 'mahasiswas'));
     }
 
     /**
@@ -91,28 +80,9 @@ class ProdiController extends Controller
     /**
      * Mengubah data program studi di database.
      */
-    public function update(Request $request, Prodi $prodi)
+    public function update(ProdiRequest $request, Prodi $prodi): RedirectResponse
     {
-        $validated = $request->validate([
-            'kode_prodi' => [
-                'required',
-                'string',
-                'max:20',
-                Rule::unique('prodis', 'kode_prodi')->ignore($prodi->id),
-            ],
-            'nama_prodi' => [
-                'required',
-                'string',
-                'max:255',
-            ],
-            'fakultas' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-        ]);
-
-        $prodi->update($validated);
+        $prodi->update($request->validated());
 
         return redirect()
             ->route('prodi.index')

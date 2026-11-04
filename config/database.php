@@ -97,9 +97,11 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
-              'options' => [
-                PDO::ATTR_PERSISTENT => true,
-            ],
+            // Supabase transaction pooler (port 6543) tidak mendukung prepared statement
+            // server-side, jadi set DB_EMULATE_PREPARES=true bila memakai port 6543.
+            'options' => extension_loaded('pdo_pgsql') ? [
+                PDO::ATTR_EMULATE_PREPARES => (bool) env('DB_EMULATE_PREPARES', false),
+            ] : [],
         ],
 
         'sqlsrv' => [
