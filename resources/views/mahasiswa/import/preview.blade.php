@@ -8,7 +8,8 @@
         ->sortBy('baris')->values();
 @endphp
 <x-app-layout title="Impor Mahasiswa" :breadcrumbs="['Data Mahasiswa' => route('mahasiswa.index'), 'Impor' => route('mahasiswa.import'), $selesai ? 'Selesai' : 'Pratinjau' => null]">
-    <x-page-header title="Impor Data Mahasiswa" :description="$sesi['nama_file'].' · '.number_format($sesi['ukuran'] / 1024, 0, ',', '.').' KB · '.($jumlahValid + $jumlahInvalid).' baris data'">
+    @php($ukuran = $sesi['ukuran'] < 1024 ? $sesi['ukuran'].' B' : number_format($sesi['ukuran'] / 1024, 0, ',', '.').' KB')
+    <x-page-header title="Impor Data Mahasiswa" :description="$sesi['nama_file'].' · '.$ukuran.' · '.($jumlahValid + $jumlahInvalid).' baris data'">
         <x-button variant="secondary" icon="file-down" :href="route('mahasiswa.import.template')" data-no-prerender>Unduh template</x-button>
     </x-page-header>
 
@@ -33,7 +34,7 @@
         </x-card>
     @else
         <div class="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-            <x-card :padding="false">
+            <x-card :padding="false" class="self-start">
                 <div class="flex flex-wrap items-center justify-between gap-3 px-5 pt-5 sm:px-6">
                     <div class="flex flex-wrap gap-2">
                         <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200"><x-icon name="circle-check" class="size-4" /> {{ $jumlahValid }} baris valid</span>
@@ -61,10 +62,10 @@
                                 <tr @class(['bg-red-50/70 dark:bg-red-500/5' => ! $item['valid']])>
                                     <td class="table-td tabular-nums text-slate-500 dark:text-slate-400">{{ $item['baris'] }}</td>
                                     <td class="table-td whitespace-nowrap font-medium tabular-nums text-slate-900 dark:text-white">{{ $item['data']['nim'] ?? '—' }}</td>
-                                    <td class="table-td min-w-40 text-slate-700 dark:text-slate-200">{{ $item['data']['nama'] ?? '—' }}</td>
-                                    <td class="table-td text-slate-600 dark:text-slate-300">{{ $item['data']['prodi'] ?: '—' }}</td>
+                                    <td class="table-td text-slate-700 dark:text-slate-200">{{ $item['data']['nama'] ?? '—' }}</td>
+                                    <td class="table-td whitespace-nowrap text-slate-600 dark:text-slate-300">{{ $item['data']['prodi'] ?: '—' }}</td>
                                     <td class="table-td tabular-nums text-slate-600 dark:text-slate-300">{{ $item['data']['angkatan'] ?? '—' }}</td>
-                                    <td class="table-td min-w-56">
+                                    <td class="table-td min-w-44">
                                         @if ($item['valid'])
                                             <span class="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"><x-icon name="circle-check" class="size-3.5" /> Siap diimpor</span>
                                         @else

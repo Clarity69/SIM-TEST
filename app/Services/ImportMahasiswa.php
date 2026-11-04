@@ -222,7 +222,7 @@ class ImportMahasiswa
         $peta = [];
 
         foreach (Prodi::opsi() as $prodi) {
-            $item = ['id' => $prodi->id, 'label' => $prodi->nama_prodi];
+            $item = ['id' => $prodi->id, 'label' => $prodi->label()];
             foreach ([$prodi->singkatan, $prodi->kode_prodi, $prodi->nama_prodi] as $kunci) {
                 if ($kunci) {
                     $peta[strtolower($kunci)] = $item;

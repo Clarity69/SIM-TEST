@@ -41,7 +41,7 @@
                 <input type="hidden" name="sort" value="{{ request('sort') }}">
                 <input type="hidden" name="direction" value="{{ request('direction') }}">
 
-                <div class="relative flex-1 lg:min-w-64">
+                <div class="relative flex-1 lg:min-w-56">
                     <label for="search" class="sr-only">Cari NIM atau nama</label>
                     {{-- Posisi diatur span pembungkus; animate-spin memakai transform sendiri
                          sehingga tidak boleh digabung dengan -translate-y-1/2 di elemen yang sama. --}}
@@ -53,13 +53,13 @@
                         class="form-control pl-9" autocomplete="off" x-on:input="queue()">
                 </div>
 
-                <x-select name="prodi_id" label="Program studi" :sr-only-label="true" class="lg:w-52" placeholder="Semua program studi"
+                <x-select name="prodi_id" label="Program studi" :sr-only-label="true" class="lg:w-48" placeholder="Semua program studi"
                     :options="$prodis->pluck('nama_prodi', 'id')" :value="request('prodi_id')" x-on:change="submit()" />
 
-                <x-select name="jenis_kelamin" label="Jenis kelamin" :sr-only-label="true" class="lg:w-44" placeholder="Semua gender"
+                <x-select name="jenis_kelamin" label="Jenis kelamin" :sr-only-label="true" class="lg:w-40" placeholder="Semua gender"
                     :options="array_combine(\App\Models\Mahasiswa::JENIS_KELAMIN, \App\Models\Mahasiswa::JENIS_KELAMIN)" :value="request('jenis_kelamin')" x-on:change="submit()" />
 
-                <x-select name="status" label="Status" :sr-only-label="true" class="lg:w-40" placeholder="Semua status"
+                <x-select name="status" label="Status" :sr-only-label="true" class="lg:w-36" placeholder="Semua status"
                     :options="array_combine(array_keys(\App\Models\Mahasiswa::STATUS), array_keys(\App\Models\Mahasiswa::STATUS))" :value="request('status')" x-on:change="submit()" />
 
                 <x-select name="angkatan" label="Angkatan" :sr-only-label="true" class="lg:w-40" placeholder="Semua angkatan"
@@ -67,7 +67,9 @@
 
                 <div class="flex gap-2">
                     <noscript><x-button type="submit" icon="search">Cari</x-button></noscript>
-                    <x-button variant="ghost" icon="refresh-cw" :href="route('mahasiswa.index')">Reset</x-button>
+                    <x-button variant="ghost" size="icon" class="size-10" :href="route('mahasiswa.index')" title="Reset filter">
+                        <x-icon name="refresh-cw" class="size-4" /><span class="sr-only">Reset filter</span>
+                    </x-button>
                 </div>
             </form>
 
