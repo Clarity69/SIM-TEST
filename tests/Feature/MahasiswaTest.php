@@ -256,4 +256,42 @@ class MahasiswaTest extends TestCase
         $data = $attachments[0]->attachWith(fn () => null, fn ($data) => $data());
         $this->assertStringStartsWith('%PDF', $data);
     }
+
+    public function test_index_page_uses_single_query_for_rows_prodi_and_total(): void
+    {
+        $user = User::factory()->create();
+        Mahasiswa::factory()->count(12)->create();
+
+        $this->actingAs($user);
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $response = $this->get(route('mahasiswa.index', ['page' => 2]), ['X-Requested-With' => 'XMLHttpRequest']);
+        $queries = collect(DB::getQueryLog())->pluck('query')->filter(fn ($sql) => str_contains($sql, 'mahasiswas'));
+        DB::disableQueryLog();
+
+        $response->assertOk()->assertViewHas('mahasiswas', fn ($page) => $page->total() === 12 && $page->count() === 2 && $page->currentPage() === 2);
+        $this->assertCount(1, $queries);
+    }
+
+    public function test_page_beyond_last_shows_empty_state_with_correct_total(): void
+    {
+        Mahasiswa::factory()->count(3)->create();
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('mahasiswa.index', ['page' => 5]))
+            ->assertOk()
+            ->assertViewHas('mahasiswas', fn ($page) => $page->total() === 3 && $page->isEmpty());
+    }
+
+    public function test_sorting_by_prodi_works_with_joined_query(): void
+    {
+        $a = Prodi::factory()->create(['nama_prodi' => 'Arsitektur']);
+        $z = Prodi::factory()->create(['nama_prodi' => 'Zoologi']);
+        Mahasiswa::factory()->for($z)->create(['nama' => 'Mahasiswa Zoologi']);
+        Mahasiswa::factory()->for($a)->create(['nama' => 'Mahasiswa Arsitektur']);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('mahasiswa.index', ['sort' => 'prodi', 'direction' => 'asc']))
+            ->assertSeeInOrder(['Mahasiswa Arsitektur', 'Mahasiswa Zoologi']);
+    }
 }

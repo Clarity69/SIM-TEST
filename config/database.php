@@ -99,8 +99,12 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
             // Supabase transaction pooler (port 6543) tidak mendukung prepared statement
             // server-side, jadi set DB_EMULATE_PREPARES=true bila memakai port 6543.
+            // DB_PERSISTENT memakai ulang koneksi antar-request (hemat ~0,7 detik TLS +
+            // autentikasi ke Supabase per request). Aman untuk session pooler (5432);
+            // default mati untuk transaction pooler (6543).
             'options' => extension_loaded('pdo_pgsql') ? [
                 PDO::ATTR_EMULATE_PREPARES => (bool) env('DB_EMULATE_PREPARES', false),
+                PDO::ATTR_PERSISTENT => (bool) env('DB_PERSISTENT', (string) env('DB_PORT', '5432') !== '6543'),
             ] : [],
         ],
 

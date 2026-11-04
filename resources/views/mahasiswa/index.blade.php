@@ -20,8 +20,12 @@
 
                 <div class="relative flex-1">
                     <label for="search" class="sr-only">Cari NIM atau nama</label>
-                    <x-icon name="search" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" x-show="! loading" />
-                    <x-icon name="loader-circle" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-primary-600" x-show="loading" x-cloak />
+                    {{-- Posisi diatur span pembungkus; animate-spin memakai transform sendiri
+                         sehingga tidak boleh digabung dengan -translate-y-1/2 di elemen yang sama. --}}
+                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400" aria-hidden="true">
+                        <x-icon name="search" class="size-4" x-show="! loading" />
+                        <x-icon name="loader-circle" class="size-4 animate-spin text-primary-600" x-show="loading" x-cloak />
+                    </span>
                     <input id="search" name="search" type="search" value="{{ request('search') }}" placeholder="Cari NIM atau nama…"
                         class="form-control pl-9" autocomplete="off" x-on:input="queue()">
                 </div>
@@ -38,8 +42,13 @@
                 </div>
             </form>
 
+            {{-- Bar progres tipis: tinggi tetap 2px agar layout tidak bergeser saat loading. --}}
+            <div class="relative h-0.5 overflow-hidden" aria-hidden="true">
+                <div x-show="loading" x-cloak class="absolute inset-y-0 left-0 w-1/3 animate-[loading-bar_1s_ease-in-out_infinite] rounded-full bg-primary-500"></div>
+            </div>
+
             <div x-ref="region" data-table-region aria-live="polite" x-bind:aria-busy="loading.toString()"
-                class="transition-opacity" x-bind:class="loading ? 'opacity-60' : ''">
+                class="transition-opacity duration-150" x-bind:class="loading ? 'opacity-50 pointer-events-none' : ''">
                 @include('mahasiswa._table')
             </div>
         </section>

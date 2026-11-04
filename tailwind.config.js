@@ -26,6 +26,12 @@ export default {
             fontFamily: {
                 sans: ['"Plus Jakarta Sans Variable"', 'Plus Jakarta Sans', ...defaultTheme.fontFamily.sans],
             },
+            keyframes: {
+                'loading-bar': {
+                    '0%': { transform: 'translateX(-100%)' },
+                    '100%': { transform: 'translateX(300%)' },
+                },
+            },
             colors: {
                 primary: {
                     50: '#f3fafe', 100: '#e3f2fd', 200: '#c1e2fa', 300: '#94cef6', 400: '#59b2f2',

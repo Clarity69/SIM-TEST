@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\View\View;
@@ -24,12 +25,7 @@ class MahasiswaController extends Controller
      */
     public function index(Request $request): View
     {
-        $mahasiswas = Mahasiswa::query()
-            ->select('id', 'nim', 'nama', 'jenis_kelamin', 'prodi_id', 'created_at')
-            ->with('prodi:id,kode_prodi,singkatan,nama_prodi')
-            ->filter($this->filters($request))
-            ->paginate(10)
-            ->withQueryString();
+        $mahasiswas = $this->paginateDaftar($request);
 
         // Pencarian live (fetch) hanya butuh potongan tabel.
         if ($request->ajax()) {
@@ -181,6 +177,52 @@ class MahasiswaController extends Controller
             'jenis_kelamin' => $mahasiswa->jenis_kelamin,
             'prodi' => $mahasiswa->prodi()->value('nama_prodi'),
         ], $request->user()->name));
+    }
+
+    /**
+     * Daftar mahasiswa per halaman dalam SATU query: data + prodi (JOIN) + total
+     * (COUNT(*) OVER()). Tiap query ke Supabase ±0,3 detik, jadi menggabungkan
+     * count, data, dan eager load prodi menghemat dua round trip per pindah halaman.
+     *
+     * @return LengthAwarePaginator<int, Mahasiswa>
+     */
+    private function paginateDaftar(Request $request, int $perPage = 10): LengthAwarePaginator
+    {
+        $page = max(1, $request->integer('page', 1));
+
+        $baris = Mahasiswa::query()
+            ->join('prodis', 'prodis.id', '=', 'mahasiswas.prodi_id')
+            ->select('mahasiswas.id', 'mahasiswas.nim', 'mahasiswas.nama', 'mahasiswas.jenis_kelamin', 'mahasiswas.prodi_id', 'mahasiswas.created_at')
+            ->addSelect('prodis.kode_prodi as prodi_kode', 'prodis.singkatan as prodi_singkatan', 'prodis.nama_prodi as prodi_nama')
+            ->selectRaw('COUNT(*) OVER () AS total_baris')
+            ->filter($this->filters($request))
+            ->forPage($page, $perPage)
+            ->get();
+
+        // Halaman di luar jangkauan tidak membawa total; hitung terpisah (jarang terjadi).
+        $total = $baris->isNotEmpty()
+            ? (int) $baris->first()->total_baris
+            : ($page > 1 ? Mahasiswa::query()->filter($this->filters($request))->count() : 0);
+
+        $baris->each(function (Mahasiswa $mahasiswa) {
+            $prodi = (new Prodi)->forceFill([
+                'id' => $mahasiswa->prodi_id,
+                'kode_prodi' => $mahasiswa->prodi_kode,
+                'singkatan' => $mahasiswa->prodi_singkatan,
+                'nama_prodi' => $mahasiswa->prodi_nama,
+            ]);
+            $prodi->exists = true;
+            $prodi->syncOriginal();
+
+            $mahasiswa->setRelation('prodi', $prodi);
+            unset($mahasiswa->prodi_kode, $mahasiswa->prodi_singkatan, $mahasiswa->prodi_nama, $mahasiswa->total_baris);
+            $mahasiswa->syncOriginal();
+        });
+
+        return (new LengthAwarePaginator($baris, $total, $perPage, $page, [
+            'path' => $request->url(),
+            'pageName' => 'page',
+        ]))->withQueryString();
     }
 
     /**

@@ -94,17 +94,17 @@ class Mahasiswa extends Model
             $pattern = '%'.addcslashes($search, '%_\\').'%';
 
             $query->where(function (Builder $q) use ($operator, $pattern) {
-                $q->where('nim', $operator, $pattern)
-                    ->orWhere('nama', $operator, $pattern);
+                $q->where($q->qualifyColumn('nim'), $operator, $pattern)
+                    ->orWhere($q->qualifyColumn('nama'), $operator, $pattern);
             });
         }
 
         if (filled($filters['prodi_id'] ?? null)) {
-            $query->where('prodi_id', (int) $filters['prodi_id']);
+            $query->where($query->qualifyColumn('prodi_id'), (int) $filters['prodi_id']);
         }
 
         if (in_array($filters['jenis_kelamin'] ?? null, self::JENIS_KELAMIN, true)) {
-            $query->where('jenis_kelamin', $filters['jenis_kelamin']);
+            $query->where($query->qualifyColumn('jenis_kelamin'), $filters['jenis_kelamin']);
         }
 
         $sort = in_array($filters['sort'] ?? null, self::SORTABLE, true) ? $filters['sort'] : 'created_at';
@@ -116,10 +116,10 @@ class Mahasiswa extends Model
                 $direction,
             );
         } else {
-            $query->orderBy($sort, $direction);
+            $query->orderBy($query->qualifyColumn($sort), $direction);
         }
 
         // Urutan stabil untuk pagination saat nilai kolom sort sama.
-        $query->orderBy('id', $direction);
+        $query->orderBy($query->qualifyColumn('id'), $direction);
     }
 }
