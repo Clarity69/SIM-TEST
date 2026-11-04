@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\MahasiswaExport;
 use App\Http\Requests\MahasiswaRequest;
 use App\Mail\MahasiswaPdfMail;
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
 use App\Models\User;
+use App\Notifications\MahasiswaBulkChanged;
 use App\Notifications\MahasiswaChanged;
+use App\Services\DashboardStats;
 use App\Services\FotoMahasiswa;
 use App\Services\MahasiswaPdf;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,7 +21,10 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class MahasiswaController extends Controller
 {
@@ -129,6 +135,52 @@ class MahasiswaController extends Controller
         return redirect()
             ->route('mahasiswa.index')
             ->with('success', 'Data mahasiswa dipindahkan ke Sampah.');
+    }
+
+    /**
+     * Aksi massal dari tabel: hapus (ke Sampah), ubah status, atau ekspor baris terpilih.
+     */
+    public function bulk(Request $request): RedirectResponse|BinaryFileResponse
+    {
+        $validated = $request->validate([
+            'aksi' => ['required', 'in:hapus,status,export'],
+            'ids' => ['required', 'array', 'min:1', 'max:500'],
+            'ids.*' => ['integer'],
+            'status' => ['required_if:aksi,status', 'nullable', Rule::in(array_keys(Mahasiswa::STATUS))],
+        ], ['ids.required' => 'Pilih minimal satu mahasiswa.']);
+
+        $ids = array_map('intval', $validated['ids']);
+
+        if ($validated['aksi'] === 'export') {
+            return Excel::download(new MahasiswaExport(ids: $ids), 'mahasiswa-terpilih-'.now()->format('Ymd-His').'.xlsx');
+        }
+
+        if ($validated['aksi'] === 'status') {
+            $jumlah = Mahasiswa::query()->whereKey($ids)->update(['status' => $validated['status'], 'updated_at' => now()]);
+            DashboardStats::forget();
+            Mahasiswa::bumpVersiDaftar();
+
+            return back()->with('success', "Status {$jumlah} mahasiswa diubah menjadi {$validated['status']}.");
+        }
+
+        $mahasiswas = Mahasiswa::query()->whereKey($ids)->get(['id', 'nim', 'nama', 'jenis_kelamin', 'prodi_id']);
+
+        foreach ($mahasiswas as $mahasiswa) {
+            $mahasiswa->forceFill(['deleted_by' => $request->user()->id])->saveQuietly();
+            $mahasiswa->delete();
+        }
+
+        if ($mahasiswas->isNotEmpty()) {
+            $admin = User::query()->where('role', User::ROLE_ADMIN)->where('notify_mahasiswa_changes', true)->get();
+            Notification::send($admin, new MahasiswaBulkChanged(
+                'dipindahkan ke Sampah',
+                $mahasiswas->count(),
+                $mahasiswas->take(5)->map(fn ($m) => "{$m->nama} ({$m->nim})")->all(),
+                $request->user()->name,
+            ));
+        }
+
+        return back()->with('success', "{$mahasiswas->count()} mahasiswa dipindahkan ke Sampah.");
     }
 
     /**

@@ -17,6 +17,12 @@
             <caption class="sr-only">Daftar mahasiswa, {{ $mahasiswas->total() }} data</caption>
             <thead class="bg-slate-50 dark:bg-slate-800/50">
                 <tr>
+                    <th scope="col" class="w-10 py-3 pl-5">
+                        <input type="checkbox" aria-label="Pilih semua di halaman ini"
+                            class="size-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-900"
+                            x-bind:checked="allOnPageSelected()" x-bind:indeterminate="someOnPageSelected()"
+                            x-on:change="toggleAllOnPage($event.target.checked)">
+                    </th>
                     <x-th-sort column="nim" label="NIM" />
                     <x-th-sort column="nama" label="Nama" />
                     <x-th-sort column="prodi" label="Program Studi" />
@@ -25,9 +31,13 @@
                     <th scope="col" class="table-th text-right"><span class="sr-only">Aksi</span></th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+            <tbody class="divide-y divide-slate-200 dark:divide-slate-800" data-page-ids="{{ json_encode($mahasiswas->pluck('id')->map(fn ($id) => (string) $id)) }}">
                 @foreach ($mahasiswas as $mahasiswa)
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40" x-bind:class="selected.includes('{{ $mahasiswa->id }}') ? 'bg-primary-50/60 dark:bg-primary-500/5' : ''">
+                        <td class="py-3 pl-5">
+                            <input type="checkbox" value="{{ $mahasiswa->id }}" x-model="selected" aria-label="Pilih {{ $mahasiswa->nama }}"
+                                class="size-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500 dark:border-slate-600 dark:bg-slate-900">
+                        </td>
                         <td class="table-td whitespace-nowrap font-medium tabular-nums text-slate-900 dark:text-white">{{ $mahasiswa->nim }}</td>
                         <td class="table-td">
                             <div class="flex items-center gap-3">

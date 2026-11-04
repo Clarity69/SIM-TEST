@@ -15,6 +15,36 @@ export default (debounceMs = 350) => ({
     // Query string aktif, dipakai link Cetak/Kirim PDF agar mengikuti filter.
     query: window.location.search,
     cache: new Map(),
+    // ID terpilih untuk aksi massal (tetap tersimpan saat pindah halaman/filter).
+    selected: [],
+
+    /** ID baris pada halaman yang sedang tampil (dibaca dari potongan tabel). */
+    pageIds() {
+        try {
+            return JSON.parse(this.$refs.region.querySelector('[data-page-ids]')?.dataset.pageIds ?? '[]');
+        } catch {
+            return [];
+        }
+    },
+
+    allOnPageSelected() {
+        const ids = this.pageIds();
+
+        return ids.length > 0 && ids.every((id) => this.selected.includes(id));
+    },
+
+    someOnPageSelected() {
+        const ids = this.pageIds();
+
+        return ids.some((id) => this.selected.includes(id)) && !this.allOnPageSelected();
+    },
+
+    toggleAllOnPage(checked) {
+        const ids = this.pageIds();
+        this.selected = checked
+            ? [...new Set([...this.selected, ...ids])]
+            : this.selected.filter((id) => !ids.includes(id));
+    },
 
     init() {
         const navLink = (target) => {

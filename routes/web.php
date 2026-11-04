@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MahasiswaController;
+use App\Http\Controllers\MahasiswaExportController;
+use App\Http\Controllers\MahasiswaImportController;
 use App\Http\Controllers\ProdiController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TrashController;
@@ -34,6 +36,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/mahasiswa/{mahasiswa}/pdf/email', [MahasiswaController::class, 'emailPdfShow'])
         ->middleware('throttle:5,1')
         ->name('mahasiswa.pdf.show.email');
+
+    // Aksi massal & impor/ekspor Excel/CSV (sebelum resource route)
+    Route::post('/mahasiswa/aksi-massal', [MahasiswaController::class, 'bulk'])->name('mahasiswa.bulk');
+    Route::get('/mahasiswa/export', MahasiswaExportController::class)->name('mahasiswa.export');
+    Route::get('/mahasiswa/import', [MahasiswaImportController::class, 'create'])->name('mahasiswa.import');
+    Route::get('/mahasiswa/import/template', [MahasiswaImportController::class, 'template'])->name('mahasiswa.import.template');
+    Route::post('/mahasiswa/import', [MahasiswaImportController::class, 'upload'])->middleware('throttle:10,1')->name('mahasiswa.import.upload');
+    Route::get('/mahasiswa/import/{token}', [MahasiswaImportController::class, 'preview'])->whereUuid('token')->name('mahasiswa.import.preview');
+    Route::post('/mahasiswa/import/{token}', [MahasiswaImportController::class, 'store'])->whereUuid('token')->name('mahasiswa.import.store');
+    Route::get('/mahasiswa/import/{token}/laporan', [MahasiswaImportController::class, 'report'])->whereUuid('token')->name('mahasiswa.import.report');
 
     // Resource CRUD Mahasiswa & Prodi
     Route::resource('mahasiswa', MahasiswaController::class);
