@@ -27,7 +27,10 @@ class ProfileController extends Controller
     {
         $user = $request->user();
 
-        $validated = $request->validate([
+        // Dari modal di dropdown topbar: error di bag terpisah dan kembali ke halaman asal.
+        $dariModal = $request->boolean('_modal');
+
+        $validated = $request->validateWithBag($dariModal ? 'updateProfile' : 'default', [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',
@@ -47,7 +50,15 @@ class ProfileController extends Controller
 
         $user->save();
 
-        return redirect()->route('profile.edit')->with('success', 'Informasi profil berhasil diperbarui.');
+        $pesan = $user->wasChanged('email')
+            ? 'Profil diperbarui. Cek email baru Anda untuk verifikasi ulang.'
+            : 'Informasi profil berhasil diperbarui.';
+
+        if ($user->wasChanged('email')) {
+            $user->sendEmailVerificationNotification();
+        }
+
+        return ($dariModal ? back() : redirect()->route('profile.edit'))->with('success', $pesan);
     }
 
     /**
@@ -55,7 +66,9 @@ class ProfileController extends Controller
      */
     public function updatePassword(Request $request)
     {
-        $validated = $request->validate([
+        $dariModal = $request->boolean('_modal');
+
+        $validated = $request->validateWithBag($dariModal ? 'updatePassword' : 'default', [
             'current_password' => ['required', 'current_password'],
             'password' => ['required', 'confirmed', 'min:8'],
         ]);
@@ -64,7 +77,7 @@ class ProfileController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        return redirect()->route('profile.edit')->with('success', 'Password berhasil diperbarui.');
+        return ($dariModal ? back() : redirect()->route('profile.edit'))->with('success', 'Password berhasil diperbarui.');
     }
 
     /**

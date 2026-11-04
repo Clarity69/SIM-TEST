@@ -96,10 +96,24 @@
                     </button>
                 </x-slot>
                 <x-slot name="content">
-                    <x-dropdown-link :href="route('profile.edit')">Profil Saya</x-dropdown-link>
+                    <div class="border-b border-slate-100 px-4 py-2.5 dark:border-slate-700 sm:hidden">
+                        <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ Auth::user()->name }}</p>
+                        <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ Auth::user()->email }}</p>
+                    </div>
+                    <button type="button" class="flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700 dark:focus:bg-slate-700"
+                        x-on:click="$store.account.open('profile')">
+                        <x-icon name="user-round" class="size-4 text-slate-400" /> Profil Saya
+                    </button>
+                    <button type="button" class="flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 focus:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700 dark:focus:bg-slate-700"
+                        x-on:click="$store.account.open('password')">
+                        <x-icon name="key-round" class="size-4 text-slate-400" /> Ganti Password
+                    </button>
+                    <div class="my-1 border-t border-slate-100 dark:border-slate-700"></div>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
-                        <x-dropdown-link :href="route('logout')" onclick="event.preventDefault(); this.closest('form').submit();">Keluar</x-dropdown-link>
+                        <button type="submit" class="flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-red-700 hover:bg-red-50 focus:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10 dark:focus:bg-red-500/10">
+                            <x-icon name="log-out" class="size-4" /> Keluar
+                        </button>
                     </form>
                 </x-slot>
             </x-dropdown>
@@ -121,6 +135,7 @@
 
     <x-flash />
     <x-modal-confirm />
+    <x-account-modals />
     @stack('scripts')
 </body>
 </html>

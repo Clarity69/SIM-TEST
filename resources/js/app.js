@@ -71,6 +71,17 @@ document.addEventListener('alpine:init', () => {
         },
     });
 
+    // Modal akun dari dropdown topbar: 'profile' | 'password' | null.
+    Alpine.store('account', {
+        modal: null,
+        open(name) {
+            this.modal = name;
+        },
+        close() {
+            this.modal = null;
+        },
+    });
+
     Alpine.data('liveTable', liveTable);
 });
 
