@@ -18,12 +18,13 @@ export default {
         './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
         './resources/js/**/*.js',
+        './app/View/Components/**/*.php',
     ],
 
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Plus Jakarta Sans', ...defaultTheme.fontFamily.sans],
+                sans: ['"Plus Jakarta Sans Variable"', 'Plus Jakarta Sans', ...defaultTheme.fontFamily.sans],
             },
             colors: {
                 primary: {

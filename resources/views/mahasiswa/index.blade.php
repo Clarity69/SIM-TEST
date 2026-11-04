@@ -1,180 +1,47 @@
-@extends('layouts.app')
-@section('title', 'Data Mahasiswa')
-@section('page-title', 'Data Mahasiswa')
-@section('content')
+<x-app-layout title="Data Mahasiswa" :breadcrumbs="['Data Mahasiswa' => null]">
+    <div x-data="liveTable(350)" class="space-y-6">
+        <x-page-header title="Data Mahasiswa" description="Cari, saring, dan kelola data mahasiswa {{ config('stitek.singkatan') }}.">
+            <form method="POST" x-bind:action="@js(route('mahasiswa.pdf.email')) + query" action="{{ route('mahasiswa.pdf.email', request()->query()) }}"
+                x-data="{ submitting: false }" x-on:submit="submitting = true">
+                @csrf
+                <x-button type="submit" variant="secondary" icon="send" :loading="true" title="Kirim laporan PDF (sesuai filter) ke {{ auth()->user()->email }}">Kirim PDF</x-button>
+            </form>
+            <x-button variant="secondary" icon="printer" target="_blank"
+                :href="route('mahasiswa.pdf', request()->query())" x-bind:href="{{ \Illuminate\Support\Js::from(route('mahasiswa.pdf')) }} + query">Cetak PDF</x-button>
+            <x-button icon="plus" :href="route('mahasiswa.create')">Tambah Mahasiswa</x-button>
+        </x-page-header>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="fw-bold mb-1">Data Mahasiswa</h2>
-        <p class="text-muted mb-0">Kelola data mahasiswa terdaftar.</p>
-    </div>
-    <div class="d-flex gap-2">
-        <a href="{{ route('mahasiswa.pdf') }}" id="btn-print-pdf" class="btn btn-danger shadow-sm" target="_blank">
-            <i class="bi bi-file-earmark-pdf me-1"></i> Print PDF
-        </a>
-        <a href="{{ route('mahasiswa.create') }}" class="btn btn-primary shadow-sm">
-            <i class="bi bi-plus-circle me-1"></i> Tambah Mahasiswa
-        </a>
-    </div>
-</div>
+        <section class="card" aria-label="Tabel data mahasiswa">
+            <form x-ref="form" method="GET" action="{{ route('mahasiswa.index') }}" role="search"
+                class="flex flex-col gap-3 border-b border-slate-200 p-4 sm:p-5 lg:flex-row lg:items-end dark:border-slate-800"
+                x-on:submit.prevent="submit()">
+                <input type="hidden" name="sort" value="{{ request('sort') }}">
+                <input type="hidden" name="direction" value="{{ request('direction') }}">
 
-{{-- PENCARIAN & FILTER --}}
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-body">
-        <form action="{{ route('mahasiswa.index') }}" method="GET">
-            <div class="row g-3">
-                <div class="col-lg-6 col-md-6">
-                    <label class="form-label fw-semibold">Pencarian</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                        <input type="text" name="search" class="form-control" placeholder="Cari NIM atau nama mahasiswa..." value="{{ request('search') }}">
-                    </div>
+                <div class="relative flex-1">
+                    <label for="search" class="sr-only">Cari NIM atau nama</label>
+                    <x-icon name="search" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" x-show="! loading" />
+                    <x-icon name="loader-circle" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-primary-600" x-show="loading" x-cloak />
+                    <input id="search" name="search" type="search" value="{{ request('search') }}" placeholder="Cari NIM atau nama…"
+                        class="form-control pl-9" autocomplete="off" x-on:input="queue()">
                 </div>
-                <div class="col-lg-4 col-md-4">
-                    <label class="form-label fw-semibold">Program Studi</label>
-                    <select name="prodi_id" class="form-select">
-                        <option value="">Semua Program Studi</option>
-                        @foreach($prodis as $prodi)
-                            <option value="{{ $prodi->id }}" {{ (string) request('prodi_id') === (string) $prodi->id ? 'selected' : '' }}>
-                                {{ $prodi->nama_prodi }}
-                            </option>
-                        @endforeach
-                    </select>
+
+                <x-select name="prodi_id" label="Program studi" :sr-only-label="true" class="lg:w-56" placeholder="Semua program studi"
+                    :options="$prodis->pluck('nama_prodi', 'id')" :value="request('prodi_id')" x-on:change="submit()" />
+
+                <x-select name="jenis_kelamin" label="Jenis kelamin" :sr-only-label="true" class="lg:w-52" placeholder="Semua jenis kelamin"
+                    :options="array_combine(\App\Models\Mahasiswa::JENIS_KELAMIN, \App\Models\Mahasiswa::JENIS_KELAMIN)" :value="request('jenis_kelamin')" x-on:change="submit()" />
+
+                <div class="flex gap-2">
+                    <noscript><x-button type="submit" icon="search">Cari</x-button></noscript>
+                    <x-button variant="ghost" icon="refresh-cw" :href="route('mahasiswa.index')">Reset</x-button>
                 </div>
-                <div class="col-lg-2 col-md-2 d-flex align-items-end">
-                    <div class="d-flex gap-2 w-100">
-                        <button type="submit" class="btn btn-primary flex-grow-1">
-                            <i class="bi bi-search me-1"></i> Cari
-                        </button>
-                        @if(request('search') || request('prodi_id'))
-                            <a href="{{ route('mahasiswa.index') }}" class="btn btn-outline-secondary" title="Reset Filter">
-                                <i class="bi bi-arrow-counterclockwise"></i>
-                            </a>
-                        @endif
-                    </div>
-                </div>
+            </form>
+
+            <div x-ref="region" data-table-region aria-live="polite" x-bind:aria-busy="loading.toString()"
+                class="transition-opacity" x-bind:class="loading ? 'opacity-60' : ''">
+                @include('mahasiswa._table')
             </div>
-        </form>
+        </section>
     </div>
-</div>
-
-{{-- TABEL MAHASISWA --}}
-<div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th class="px-4" style="width: 70px;">#</th>
-                        <th>NIM</th>
-                        <th>Nama</th>
-                        <th>Program Studi</th>
-                        <th>Jenis Kelamin</th>
-                        <th class="text-center" style="width: 150px;">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($mahasiswas as $mahasiswa)
-                        <tr>
-                            <td class="px-4 text-muted">{{ $mahasiswas->firstItem() + $loop->index }}</td>
-                            <td class="fw-semibold">{{ $mahasiswa->nim }}</td>
-                            <td class="fw-bold">{{ $mahasiswa->nama }}</td>
-                            <td>
-                                <span class="badge bg-primary bg-opacity-10 text-primary">
-                                    {{ $mahasiswa->prodi->nama_prodi ?? '-' }}
-                                </span>
-                            </td>
-                            <td>
-                                @if($mahasiswa->jenis_kelamin === 'Laki-laki')
-                                    <span class="badge bg-info bg-opacity-10 text-info rounded-pill">
-                                        <i class="bi bi-person-fill me-1"></i>Laki-laki
-                                    </span>
-                                @else
-                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill">
-                                        <i class="bi bi-person-heart me-1"></i>Perempuan
-                                    </span>
-                                @endif
-                            </td>
-                            <td>
-                                <div class="d-flex justify-content-center gap-1">
-                                    <a href="{{ route('mahasiswa.show', $mahasiswa) }}" class="btn btn-sm btn-outline-info" title="Detail">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <a href="{{ route('mahasiswa.edit', $mahasiswa) }}" class="btn btn-sm btn-outline-warning" title="Edit">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <form action="{{ route('mahasiswa.destroy', $mahasiswa) }}" method="POST" class="d-inline form-hapus" data-nama="{{ $mahasiswa->nama }} ({{ $mahasiswa->nim }})" data-jenis="data mahasiswa">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="text-center py-5">
-                                <i class="bi bi-people fs-1 text-muted d-block mb-2"></i>
-                                <h5 class="fw-bold">Data Mahasiswa Tidak Ditemukan</h5>
-                                <p class="text-muted small">
-                                    @if(request('search') || request('prodi_id'))
-                                        Tidak ada data yang sesuai dengan kriteria pencarian.
-                                    @else
-                                        Belum ada data mahasiswa terdaftar.
-                                    @endif
-                                </p>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        {{-- PAGINATION --}}
-        @if($mahasiswas->hasPages())
-            <div class="d-flex justify-content-between align-items-center p-3 border-top">
-                <div class="text-muted small">
-                    Menampilkan <strong>{{ $mahasiswas->firstItem() }}</strong> - <strong>{{ $mahasiswas->lastItem() }}</strong> dari <strong>{{ $mahasiswas->total() }}</strong> data
-                </div>
-                <nav>
-                    <ul class="pagination pagination-sm mb-0">
-                        @if($mahasiswas->onFirstPage())
-                            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
-                        @else
-                            <li class="page-item"><a class="page-link" href="{{ $mahasiswas->previousPageUrl() }}">&laquo;</a></li>
-                        @endif
-
-                        @foreach($mahasiswas->getUrlRange(max(1, $mahasiswas->currentPage() - 2), min($mahasiswas->lastPage(), $mahasiswas->currentPage() + 2)) as $page => $url)
-                            @if($page == $mahasiswas->currentPage())
-                                <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                            @else
-                                <li class="page-item"><a class="page-link" href="{{ $url }}">{{ $page }}</a></li>
-                            @endif
-                        @endforeach
-
-                        @if($mahasiswas->hasMorePages())
-                            <li class="page-item"><a class="page-link" href="{{ $mahasiswas->nextPageUrl() }}">&raquo;</a></li>
-                        @else
-                            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
-                        @endif
-                    </ul>
-                </nav>
-            </div>
-        @endif
-    </div>
-</div>
-    </div>
-</div>
-
-<script>
-    document.getElementById('btn-print-pdf').addEventListener('click', function () {
-        const search = document.querySelector('input[name="search"]').value;
-        const prodiId = document.querySelector('select[name="prodi_id"]').value;
-
-        const params = new URLSearchParams({ search: search, prodi_id: prodiId });
-        this.href = "{{ route('mahasiswa.pdf') }}?" + params.toString();
-    });
-</script>
-@endsection
+</x-app-layout>

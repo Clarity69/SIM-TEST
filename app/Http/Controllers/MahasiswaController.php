@@ -31,6 +31,11 @@ class MahasiswaController extends Controller
             ->paginate(10)
             ->withQueryString();
 
+        // Pencarian live (fetch) hanya butuh potongan tabel.
+        if ($request->ajax()) {
+            return view('mahasiswa._table', compact('mahasiswas'));
+        }
+
         $prodis = $this->prodiOptions();
 
         return view('mahasiswa.index', compact('mahasiswas', 'prodis'));

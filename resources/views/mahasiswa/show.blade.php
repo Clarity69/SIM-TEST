@@ -1,84 +1,63 @@
-@extends('layouts.app')
-
-@section('title', 'Detail Mahasiswa')
-@section('page-title', 'Detail Mahasiswa')
-
-@section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="fw-bold mb-1">Detail Mahasiswa</h2>
-        <p class="text-muted mb-0">Informasi lengkap profil mahasiswa.</p>
-    </div>
-    <div class="d-flex gap-2">
-        <a href="{{ route('mahasiswa.edit', $mahasiswa) }}" class="btn btn-warning text-dark">
-            <i class="bi bi-pencil me-1"></i> Edit
-        </a>
-        <a href="{{ route('mahasiswa.index') }}" class="btn btn-secondary">
-            <i class="bi bi-arrow-left me-1"></i> Kembali
-        </a>
-    </div>
-</div>
-
-<div class="row g-4">
-    {{-- CARD PROFIL --}}
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm text-center">
-            <div class="card-body p-4">
-                <div class="rounded-circle bg-primary bg-opacity-10 text-primary mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 90px; height: 90px;">
-                    <i class="bi bi-person-fill fs-1"></i>
+<x-app-layout title="{{ $mahasiswa->nama }}" :breadcrumbs="['Data Mahasiswa' => route('mahasiswa.index'), $mahasiswa->nama => null]">
+    <div class="card overflow-hidden">
+        <div class="h-24 bg-gradient-to-r from-primary-950 via-primary-800 to-primary-600" aria-hidden="true"></div>
+        <div class="flex flex-col gap-4 px-5 pb-6 sm:flex-row sm:items-end sm:justify-between sm:px-6">
+            <div class="-mt-10 flex items-end gap-4">
+                <x-avatar :name="$mahasiswa->nama" :jenis-kelamin="$mahasiswa->jenis_kelamin" size="lg" class="ring-4 ring-white dark:ring-slate-900" />
+                <div class="pb-1">
+                    <h1 class="text-xl font-bold text-slate-900 dark:text-white">{{ $mahasiswa->nama }}</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ $mahasiswa->nim }} · {{ $mahasiswa->prodi->nama_prodi }}</p>
                 </div>
-                <h4 class="fw-bold mb-1">{{ $mahasiswa->nama }}</h4>
-                <span class="badge bg-primary px-3 py-2 rounded-pill mb-3">{{ $mahasiswa->nim }}</span>
-                <hr>
-                <div class="text-start">
-                    <small class="text-muted d-block mb-1">Program Studi</small>
-                    <strong class="text-dark">{{ $mahasiswa->prodi->nama_prodi ?? '-' }}</strong>
-                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <form method="POST" action="{{ route('mahasiswa.pdf.show.email', $mahasiswa) }}" x-data="{ submitting: false }" x-on:submit="submitting = true">
+                    @csrf
+                    <x-button type="submit" variant="secondary" icon="send" :loading="true" title="Kirim PDF biodata ke {{ auth()->user()->email }}">Kirim PDF</x-button>
+                </form>
+                <x-button variant="secondary" icon="printer" :href="route('mahasiswa.pdf.show', $mahasiswa)" target="_blank">Cetak PDF</x-button>
+                <x-button variant="secondary" icon="pencil" :href="route('mahasiswa.edit', $mahasiswa)">Edit</x-button>
+                <x-button variant="danger-soft" icon="trash-2"
+                    x-on:click="$store.confirm.ask({{ \Illuminate\Support\Js::from(['title' => 'Hapus mahasiswa?', 'message' => 'Data '.$mahasiswa->nama.' ('.$mahasiswa->nim.') akan dihapus.', 'action' => route('mahasiswa.destroy', $mahasiswa)]) }})">Hapus</x-button>
             </div>
         </div>
     </div>
 
-    {{-- INFORMASI LENGKAP --}}
-    <div class="col-md-8">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white py-3">
-                <h5 class="fw-bold mb-0">Informasi Mahasiswa</h5>
-            </div>
-            <div class="card-body p-4">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <small class="text-muted d-block">NIM</small>
-                        <span class="fw-semibold text-dark">{{ $mahasiswa->nim }}</span>
-                    </div>
-                    <div class="col-md-6">
-                        <small class="text-muted d-block">Nama Lengkap</small>
-                        <span class="fw-semibold text-dark">{{ $mahasiswa->nama }}</span>
-                    </div>
-                    <div class="col-md-6">
-                        <small class="text-muted d-block">Jenis Kelamin</small>
-                        <span class="fw-semibold text-dark">{{ $mahasiswa->jenis_kelamin }}</span>
-                    </div>
-                    <div class="col-md-6">
-                        <small class="text-muted d-block">Tanggal Lahir</small>
-                        <span class="fw-semibold text-dark">
-                            {{ $mahasiswa->tanggal_lahir ? $mahasiswa->tanggal_lahir->format('d-m-Y') : '-' }}
-                        </span>
-                    </div>
-                    <div class="col-md-6">
-                        <small class="text-muted d-block">Email</small>
-                        <span class="fw-semibold text-dark">{{ $mahasiswa->email ?? '-' }}</span>
-                    </div>
-                    <div class="col-md-6">
-                        <small class="text-muted d-block">Telepon</small>
-                        <span class="fw-semibold text-dark">{{ $mahasiswa->telepon ?? '-' }}</span>
-                    </div>
-                    <div class="col-12">
-                        <small class="text-muted d-block">Alamat</small>
-                        <span class="fw-semibold text-dark">{{ $mahasiswa->alamat ?? '-' }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="grid gap-4 lg:grid-cols-3">
+        @php
+            $grup = [
+                ['Data Diri', 'user', [
+                    'NIM' => $mahasiswa->nim,
+                    'Nama lengkap' => $mahasiswa->nama,
+                    'Jenis kelamin' => $mahasiswa->jenis_kelamin,
+                    'Tanggal lahir' => $mahasiswa->tanggal_lahir?->locale('id')->translatedFormat('d F Y'),
+                ]],
+                ['Kontak', 'phone', [
+                    'Email' => $mahasiswa->email,
+                    'Telepon' => $mahasiswa->telepon,
+                    'Alamat' => $mahasiswa->alamat,
+                ]],
+                ['Akademik', 'graduation-cap', [
+                    'Program studi' => $mahasiswa->prodi->nama_prodi,
+                    'Kode prodi' => $mahasiswa->prodi->kode_prodi,
+                    'Terdaftar sejak' => $mahasiswa->created_at?->locale('id')->translatedFormat('d F Y'),
+                    'Terakhir diubah' => $mahasiswa->updated_at?->locale('id')->diffForHumans(),
+                ]],
+            ];
+        @endphp
+        @foreach ($grup as [$judul, $ikon, $baris])
+            <x-card>
+                <h2 class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+                    <x-icon :name="$ikon" class="size-4 text-primary-600 dark:text-primary-400" /> {{ $judul }}
+                </h2>
+                <dl class="mt-4 space-y-3">
+                    @foreach ($baris as $label => $nilai)
+                        <div>
+                            <dt class="text-xs text-slate-500 dark:text-slate-400">{{ $label }}</dt>
+                            <dd class="mt-0.5 text-sm font-medium text-slate-900 dark:text-white">{{ filled($nilai) ? $nilai : '—' }}</dd>
+                        </div>
+                    @endforeach
+                </dl>
+            </x-card>
+        @endforeach
     </div>
-</div>
-@endsection
+</x-app-layout>

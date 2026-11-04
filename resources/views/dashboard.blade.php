@@ -1,354 +1,110 @@
-@extends('layouts.app')
+<x-app-layout title="Dashboard" :breadcrumbs="['Dashboard' => null]">
+    @php
+        $grafikProdi = [
+            'type' => 'bar',
+            'labels' => $mahasiswaPerProdi->pluck('label'),
+            'names' => $mahasiswaPerProdi->pluck('nama_prodi'),
+            'values' => $mahasiswaPerProdi->pluck('mahasiswas_count'),
+        ];
+        $grafikGender = ['type' => 'doughnut', 'labels' => ['Laki-laki', 'Perempuan'], 'values' => [$totalLakiLaki, $totalPerempuan]];
+    @endphp
+    <x-page-header title="Dashboard" description="Ringkasan data akademik {{ config('stitek.singkatan') }} · diperbarui otomatis setiap 5 menit">
+        <x-button variant="secondary" icon="printer" :href="route('mahasiswa.pdf')" target="_blank">Cetak PDF</x-button>
+        <x-button icon="plus" :href="route('mahasiswa.create')">Tambah Mahasiswa</x-button>
+    </x-page-header>
 
-@section('title', 'Dashboard')
-@section('page-title', 'Dashboard')
-
-@section('content')
-{{-- HEADER DASHBOARD --}}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="fw-bold mb-1">Dashboard</h2>
-        <p class="text-muted mb-0">
-            Selamat datang kembali, <strong>{{ auth()->user()->name ?? 'Administrator' }}</strong>!
-        </p>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <x-stat-card label="Total Mahasiswa" :value="$totalMahasiswa" icon="users" :trend="$tren['total']" />
+        <x-stat-card label="Laki-laki" :value="$totalLakiLaki" icon="user" tone="accent" :trend="$tren['laki']" />
+        <x-stat-card label="Perempuan" :value="$totalPerempuan" icon="user-round" tone="secondary" :trend="$tren['perempuan']" />
+        <x-stat-card label="Program Studi" :value="$totalProdi" icon="graduation-cap" tone="success" :trend="$tren['prodi']" />
     </div>
-    <div>
-        <a href="{{ route('mahasiswa.create') }}" class="btn btn-primary shadow-sm">
-            <i class="bi bi-plus-circle me-1"></i>
-            Tambah Mahasiswa
-        </a>
-    </div>
-</div>
 
-{{-- STATISTIK RINGKASAN --}}
-<div class="row g-3 mb-4">
-    {{-- TOTAL MAHASISWA & TREND ARROW --}}
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-muted fw-semibold small">Total Mahasiswa</span>
-                        <h2 class="fw-bold text-dark mt-1 mb-0">{{ $totalMahasiswa }}</h2>
-                        <div class="small mt-2">
-                            <span class="badge {{ $persen['total']['kelas'] }} rounded-pill">
-                                <i class="bi {{ $persen['total']['ikon'] }}"></i> {{ $persen['total']['teks'] }}
-                            </span>
-                            <span class="text-muted ms-1">dalam 30 hari terakhir</span>
-                        </div>
-                    </div>
-                    <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary">
-                        <i class="bi bi-people-fill fs-3"></i>
-                    </div>
+    <div class="grid gap-4 lg:grid-cols-3">
+        <x-card title="Mahasiswa per Program Studi" description="Jumlah mahasiswa terdaftar di setiap prodi" class="lg:col-span-2">
+            @if ($totalMahasiswa > 0)
+                <div class="h-72">
+                    <canvas role="img" aria-label="Grafik batang jumlah mahasiswa per program studi"
+                        data-chart="{{ json_encode($grafikProdi) }}"></canvas>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- LAKI-LAKI --}}
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-muted fw-semibold small">Laki-laki</span>
-                        <h2 class="fw-bold text-info mt-1 mb-0">{{ $totalLakiLaki }}</h2>
-                        <div class="small mt-2">
-                            <span class="badge {{ $persen['laki']['kelas'] }} rounded-pill">
-                                <i class="bi {{ $persen['laki']['ikon'] }}"></i> {{ $persen['laki']['teks'] }}
-                            </span>
-                            <span class="text-muted ms-1">dalam 30 hari terakhir</span>
-                        </div>
-                    </div>
-                    <div class="rounded-circle bg-info bg-opacity-10 p-3 text-info">
-                        <i class="bi bi-person-fill fs-3"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- PEREMPUAN --}}
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-muted fw-semibold small">Perempuan</span>
-                        <h2 class="fw-bold text-danger mt-1 mb-0">{{ $totalPerempuan }}</h2>
-                        <div class="small mt-2">
-                            <span class="badge {{ $persen['perempuan']['kelas'] }} rounded-pill">
-                                <i class="bi {{ $persen['perempuan']['ikon'] }}"></i> {{ $persen['perempuan']['teks'] }}
-                            </span>
-                            <span class="text-muted ms-1">dalam 30 hari terakhir</span>
-                        </div>
-                    </div>
-                    <div class="rounded-circle bg-danger bg-opacity-10 p-3 text-danger">
-                        <i class="bi bi-person-heart fs-3"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- TOTAL PRODI --}}
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-muted fw-semibold small">Program Studi</span>
-                        <h2 class="fw-bold text-success mt-1 mb-0">{{ $totalProdi }}</h2>
-                        <div class="small mt-2">
-                            <span class="badge {{ $persen['prodi']['kelas'] }} rounded-pill">
-                                <i class="bi {{ $persen['prodi']['ikon'] }}"></i> {{ $persen['prodi']['teks'] }}
-                            </span>
-                            <span class="text-muted ms-1">dalam 30 hari terakhir</span>
-                        </div>
-                    </div>
-                    <div class="rounded-circle bg-success bg-opacity-10 p-3 text-success">
-                        <i class="bi bi-building fs-3"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{{-- AREA CHART --}}
-<div class="row g-4 mb-4">
-    {{-- BAR CHART MAHASISWA PER PRODI --}}
-    <div class="col-lg-8">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-white py-3">
-                <h5 class="fw-bold mb-0">Statistik Mahasiswa per Prodi</h5>
-            </div>
-            <div class="card-body">
-                {{-- Chart.js butuh wadah dengan tinggi PASTI (bukan max-height) --}}
-                <div style="position: relative; width: 100%; height: 280px;">
-                    <canvas id="prodiChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- PIE CHART JENIS KELAMIN --}}
-    <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-white py-3">
-                <h5 class="fw-bold mb-0">Statistik Jenis Kelamin</h5>
-            </div>
-            <div class="card-body">
-                <div style="position: relative; width: 100%; height: 280px;">
-                    <canvas id="genderChart"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{{-- AREA TABEL DAN REKAP --}}
-<div class="row g-4">
-    {{-- DATA MAHASISWA TERBARU --}}
-    <div class="col-lg-8">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-bold">Mahasiswa Terbaru</h5>
-                <a href="{{ route('mahasiswa.index') }}" class="btn btn-sm btn-outline-primary">
-                    Lihat Semua <i class="bi bi-arrow-right ms-1"></i>
-                </a>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="px-4">NIM</th>
-                                <th>Nama</th>
-                                <th>Program Studi</th>
-                                <th>Jenis Kelamin</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($mahasiswaTerbaru as $mahasiswa)
-                                <tr>
-                                    <td class="px-4 fw-semibold">{{ $mahasiswa->nim }}</td>
-                                    <td class="fw-bold">{{ $mahasiswa->nama }}</td>
-                                    <td>
-                                        <span class="badge bg-primary bg-opacity-10 text-primary">
-                                            {{ $mahasiswa->prodi->nama_prodi ?? '-' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @if($mahasiswa->jenis_kelamin === 'Laki-laki')
-                                            <span class="badge bg-info bg-opacity-10 text-info rounded-pill">
-                                                <i class="bi bi-person-fill me-1"></i>Laki-laki
-                                            </span>
-                                        @else
-                                            <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill">
-                                                <i class="bi bi-person-heart me-1"></i>Perempuan
-                                            </span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">
-                                        <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
-                                        Belum ada data mahasiswa.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{-- RINGKASAN REKAP PRODI --}}
-    <div class="col-lg-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-header bg-white py-3">
-                <h5 class="fw-bold mb-0">Rekapitulasi Program Studi</h5>
-            </div>
-            <div class="card-body p-0">
-                <ul class="list-group list-group-flush rekap-prodi">
-                    @php $warnaProgress = ['bg-primary', 'bg-info', 'bg-success', 'bg-warning', 'bg-danger']; @endphp
-                    @forelse($mahasiswaPerProdi as $prodi)
-                        @php
-                            $persenProdi = $totalMahasiswa > 0
-                                ? round($prodi->mahasiswas_count / $totalMahasiswa * 100, 1)
-                                : 0;
-                        @endphp
-                        <li class="list-group-item px-4 py-3">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div>
-                                    <h6 class="fw-bold mb-0">{{ $prodi->nama_prodi }}</h6>
-                                    <small class="text-muted">{{ $prodi->kode_prodi }}</small>
-                                </div>
-                                <div class="text-end">
-                                    <div class="fw-bold">{{ $prodi->mahasiswas_count }} <small class="text-muted fw-normal">mhs</small></div>
-                                    <small class="text-muted">{{ $persenProdi }}%</small>
-                                </div>
-                            </div>
-                            <div class="progress" style="height: 6px;" role="progressbar"
-                                 aria-label="Persentase mahasiswa {{ $prodi->nama_prodi }}"
-                                 aria-valuenow="{{ $persenProdi }}" aria-valuemin="0" aria-valuemax="100">
-                                <div class="progress-bar {{ $warnaProgress[$loop->index % count($warnaProgress)] }}"
-                                     style="width: {{ $persenProdi }}%"></div>
-                            </div>
-                        </li>
-                    @empty
-                        <li class="list-group-item text-center text-muted py-4">
-                            Belum ada data program studi.
-                        </li>
-                    @endforelse
+                <ul class="sr-only">
+                    @foreach ($mahasiswaPerProdi as $prodi)
+                        <li>{{ $prodi['nama_prodi'] }}: {{ $prodi['mahasiswas_count'] }} mahasiswa</li>
+                    @endforeach
                 </ul>
-            </div>
-        </div>
+            @else
+                <x-empty-state icon="graduation-cap" title="Belum ada data" description="Grafik muncul setelah data mahasiswa ditambahkan." />
+            @endif
+        </x-card>
+
+        <x-card title="Komposisi Gender" description="Perbandingan laki-laki dan perempuan">
+            @if ($totalMahasiswa > 0)
+                <div class="relative mx-auto h-48 w-48">
+                    <canvas role="img" aria-label="Diagram donat komposisi gender"
+                        data-chart="{{ json_encode($grafikGender) }}"></canvas>
+                    <div class="pointer-events-none absolute inset-0 grid place-items-center text-center">
+                        <div>
+                            <p class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{{ $totalMahasiswa }}</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">mahasiswa</p>
+                        </div>
+                    </div>
+                </div>
+                <dl class="mt-6 space-y-3 text-sm">
+                    @foreach (['Laki-laki' => [$totalLakiLaki, 'bg-primary-600 dark:bg-primary-400'], 'Perempuan' => [$totalPerempuan, 'bg-secondary-500']] as $jk => [$jumlah, $warna])
+                        <div class="flex items-center gap-3">
+                            <span class="size-2.5 rounded-sm {{ $warna }}" aria-hidden="true"></span>
+                            <dt class="flex-1 text-slate-600 dark:text-slate-300">{{ $jk }}</dt>
+                            <dd class="font-semibold tabular-nums text-slate-900 dark:text-white">{{ $jumlah }} · {{ round($jumlah / $totalMahasiswa * 100) }}%</dd>
+                        </div>
+                    @endforeach
+                </dl>
+            @else
+                <x-empty-state icon="users" title="Belum ada data" />
+            @endif
+        </x-card>
     </div>
-</div>
-@endsection
 
-@push('styles')
-<style>
-    /* Rekapitulasi: ikut warna card, tidak abu-abu sendiri di dark mode */
-    .rekap-prodi .list-group-item {
-        background-color: transparent;
-        color: inherit;
-        border-color: rgba(0, 0, 0, .06);
-    }
-    [data-bs-theme="dark"] .rekap-prodi .list-group-item { border-color: #334155; }
-    [data-bs-theme="dark"] .rekap-prodi .progress { background-color: #334155; }
-</style>
-@endpush
+    <x-card title="Mahasiswa Terbaru" description="5 data terakhir yang ditambahkan" :padding="false">
+        <x-slot:actions>
+            <a href="{{ route('mahasiswa.index') }}" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-700 hover:text-primary-800 dark:text-primary-300">
+                Lihat semua <x-icon name="arrow-up-right" class="size-4" />
+            </a>
+        </x-slot:actions>
 
-@push('scripts')
-{{-- Chart.js dimuat dari folder public (tidak bergantung internet/CDN).
-     Kalau file lokal belum ada, otomatis memakai CDN sebagai cadangan. --}}
-<script src="{{ asset('js/chart.umd.js') }}"></script>
-<script>
-    window.Chart || document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>');
-</script>
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-
-        if (typeof Chart === 'undefined') {
-            console.error('Chart.js gagal dimuat. Cek koneksi internet / link CDN.');
-            return;
-        }
-
-        // Warna teks & garis grid mengikuti tema (agar terbaca di dark mode)
-        const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
-        Chart.defaults.color = isDark ? '#cbd5e1' : '#475569';
-        Chart.defaults.borderColor = isDark ? 'rgba(148, 163, 184, .15)' : 'rgba(0, 0, 0, .08)';
-
-        // 1. BAR CHART - MAHASISWA PER PRODI
-        const ctxProdi = document.getElementById('prodiChart').getContext('2d');
-        const labelsProdi = {!! json_encode($mahasiswaPerProdi->pluck('kode_prodi')) !!};
-        const dataProdi = {!! json_encode($mahasiswaPerProdi->pluck('mahasiswas_count')) !!};
-
-        new Chart(ctxProdi, {
-            type: 'bar',
-            data: {
-                labels: labelsProdi,
-                datasets: [{
-                    label: 'Jumlah Mahasiswa',
-                    data: dataProdi,
-                    backgroundColor: isDark ? 'rgba(59, 130, 246, 0.85)' : 'rgba(13, 71, 161, 0.85)',
-                    borderColor: isDark ? '#3b82f6' : '#0d47a1',
-                    borderWidth: 1,
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-            }
-        });
-
-        // 2. PIE (DOUGHNUT) CHART - JENIS KELAMIN
-        const ctxGender = document.getElementById('genderChart').getContext('2d');
-        
-        new Chart(ctxGender, {
-            type: 'doughnut', // Menggunakan doughnut agar terlihat lebih modern
-            data: {
-                labels: ['Laki-laki', 'Perempuan'],
-                datasets: [{
-                    data: [{{ $totalLakiLaki }}, {{ $totalPerempuan }}],
-                    backgroundColor: [
-                        'rgba(13, 202, 240, 0.85)', // Warna Info (Cyan)
-                        'rgba(220, 53, 69, 0.85)'   // Warna Danger (Red)
-                    ],
-                    borderColor: [
-                        '#0dcaf0',
-                        '#dc3545'
-                    ],
-                    borderWidth: 2,
-                    hoverOffset: 4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 20,
-                            usePointStyle: true,
-                        }
-                    }
-                },
-                cutout: '65%' // Mengatur ketebalan donat
-            }
-        });
-
-        // Saat tema diganti dari sidebar, muat ulang halaman agar warna grafik ikut berubah
-        document.addEventListener('themechange', () => location.reload());
-    });
-</script>
-@endpush
+        @if ($mahasiswaTerbaru->isEmpty())
+            <x-empty-state title="Belum ada mahasiswa" description="Tambahkan mahasiswa pertama untuk mulai mengisi dashboard.">
+                <x-button icon="plus" :href="route('mahasiswa.create')">Tambah Mahasiswa</x-button>
+            </x-empty-state>
+        @else
+            <div class="mt-4 overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                    <thead class="bg-slate-50 dark:bg-slate-800/50">
+                        <tr>
+                            <th scope="col" class="table-th">NIM</th>
+                            <th scope="col" class="table-th">Nama</th>
+                            <th scope="col" class="table-th">Program Studi</th>
+                            <th scope="col" class="table-th">Jenis Kelamin</th>
+                            <th scope="col" class="table-th">Ditambahkan</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                        @foreach ($mahasiswaTerbaru as $mahasiswa)
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                <td class="table-td font-medium tabular-nums">{{ $mahasiswa['nim'] }}</td>
+                                <td class="table-td">
+                                    <a href="{{ route('mahasiswa.show', $mahasiswa['id']) }}" class="flex items-center gap-3 font-medium text-slate-900 hover:text-primary-700 dark:text-white dark:hover:text-primary-300">
+                                        <x-avatar :name="$mahasiswa['nama']" :jenis-kelamin="$mahasiswa['jenis_kelamin']" size="sm" />
+                                        {{ $mahasiswa['nama'] }}
+                                    </a>
+                                </td>
+                                <td class="table-td text-slate-600 dark:text-slate-300">{{ $mahasiswa['prodi'] }}</td>
+                                <td class="table-td"><x-badge :tone="$mahasiswa['jenis_kelamin'] === 'Laki-laki' ? 'primary' : 'secondary'">{{ $mahasiswa['jenis_kelamin'] }}</x-badge></td>
+                                <td class="table-td whitespace-nowrap text-slate-500 dark:text-slate-400">{{ \Illuminate\Support\Carbon::parse($mahasiswa['created_at'])->locale('id')->diffForHumans() }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </x-card>
+</x-app-layout>

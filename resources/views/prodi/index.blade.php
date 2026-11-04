@@ -1,134 +1,76 @@
-@extends('layouts.app')
+<x-app-layout title="Program Studi" :breadcrumbs="['Program Studi' => null]">
+    <x-page-header title="Program Studi" description="Daftar program studi S1 beserta kaprodi dan jumlah mahasiswanya.">
+        <x-button icon="plus" :href="route('prodi.create')">Tambah Prodi</x-button>
+    </x-page-header>
 
-@section('title', 'Program Studi')
-@section('page-title', 'Program Studi')
-
-@section('content')
-{{-- HEADER HALAMAN --}}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h2 class="fw-bold mb-1">Program Studi</h2>
-        <p class="text-muted mb-0">Kelola data program studi dan fakultas.</p>
-    </div>
-    <a href="{{ route('prodi.create') }}" class="btn btn-primary shadow-sm">
-        <i class="bi bi-plus-circle me-1"></i> Tambah Prodi
-    </a>
-</div>
-
-{{-- PENCARIAN --}}
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-body">
-        <form action="{{ route('prodi.index') }}" method="GET">
-            <div class="row g-2">
-                <div class="col-md-10">
-                    <div class="input-group">
-                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                        <input type="text" name="search" class="form-control" placeholder="Cari kode, nama prodi, atau fakultas..." value="{{ request('search') }}">
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search me-1"></i> Cari
-                    </button>
-                </div>
+    <section class="card" aria-label="Tabel program studi">
+        <form method="GET" action="{{ route('prodi.index') }}" role="search" class="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:p-5 dark:border-slate-800">
+            <div class="relative flex-1">
+                <label for="search" class="sr-only">Cari kode, singkatan, nama prodi, atau fakultas</label>
+                <x-icon name="search" class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input id="search" name="search" type="search" value="{{ request('search') }}" placeholder="Cari kode, singkatan, atau nama prodi…" class="form-control pl-9">
+            </div>
+            <div class="flex gap-2">
+                <x-button type="submit" variant="secondary" icon="search">Cari</x-button>
+                @if (request()->filled('search'))
+                    <x-button variant="ghost" icon="refresh-cw" :href="route('prodi.index')">Reset</x-button>
+                @endif
             </div>
         </form>
-    </div>
-</div>
 
-{{-- TABEL DATA --}}
-<div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th class="px-4" style="width: 70px;">#</th>
-                        <th style="width: 120px;">Kode</th>
-                        <th>Nama Program Studi</th>
-                        <th>Fakultas</th>
-                        <th>Jumlah Mahasiswa</th>
-                        <th class="text-center" style="width: 150px;">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($prodis as $prodi)
+        @if ($prodis->isEmpty())
+            <x-empty-state icon="graduation-cap" :title="request()->filled('search') ? 'Tidak ada hasil' : 'Belum ada program studi'"
+                :description="request()->filled('search') ? 'Coba kata kunci lain.' : 'Tambahkan program studi agar mahasiswa bisa didaftarkan.'" />
+        @else
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                    <thead class="bg-slate-50 dark:bg-slate-800/50">
                         <tr>
-                            <td class="px-4 text-muted">{{ $prodis->firstItem() + $loop->index }}</td>
-                            <td>
-                                <span class="badge bg-primary px-3 py-2 fw-bold">{{ $prodi->kode_prodi }}</span>
-                            </td>
-                            <td class="fw-bold">{{ $prodi->nama_prodi }}</td>
-                            <td>{{ $prodi->fakultas ?? '-' }}</td>
-                            <td>
-                                <span class="badge bg-info bg-opacity-10 text-info px-3 py-2 rounded-pill fw-bold">
-                                    <i class="bi bi-people me-1"></i>{{ $prodi->mahasiswas_count }} Mahasiswa
-                                </span>
-                            </td>
-                            <td>
-                                <div class="d-flex justify-content-center gap-1">
-                                    <a href="{{ route('prodi.show', $prodi) }}" class="btn btn-sm btn-outline-info" title="Detail">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <a href="{{ route('prodi.edit', $prodi) }}" class="btn btn-sm btn-outline-warning" title="Edit">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <form action="{{ route('prodi.destroy', $prodi) }}" method="POST" class="d-inline form-hapus" data-nama="{{ $prodi->nama_prodi }}" data-jenis="program studi">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
+                            <th scope="col" class="table-th">Kode</th>
+                            <th scope="col" class="table-th">Program Studi</th>
+                            <th scope="col" class="table-th">Kaprodi</th>
+                            <th scope="col" class="table-th text-right">Mahasiswa</th>
+                            <th scope="col" class="table-th text-right"><span class="sr-only">Aksi</span></th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="text-center py-5">
-                                <div class="text-center">
-                                    <i class="bi bi-building fs-1 text-muted d-block mb-2"></i>
-                                    <h5 class="fw-bold">Data Program Studi Tidak Ditemukan</h5>
-                                    <p class="text-muted small">Belum ada data program studi terdaftar.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        {{-- PAGINATION MANUAL --}}
-        @if($prodis->hasPages())
-            <div class="d-flex justify-content-between align-items-center p-3 border-top">
-                <div class="text-muted small">
-                    Menampilkan <strong>{{ $prodis->firstItem() }}</strong> - <strong>{{ $prodis->lastItem() }}</strong> dari <strong>{{ $prodis->total() }}</strong> prodi
-                </div>
-                <nav>
-                    <ul class="pagination pagination-sm mb-0">
-                        @if($prodis->onFirstPage())
-                            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
-                        @else
-                            <li class="page-item"><a class="page-link" href="{{ $prodis->previousPageUrl() }}">&laquo;</a></li>
-                        @endif
-
-                        @foreach($prodis->getUrlRange(max(1, $prodis->currentPage() - 2), min($prodis->lastPage(), $prodis->currentPage() + 2)) as $page => $url)
-                            @if($page == $prodis->currentPage())
-                                <li class="page-item active"><span class="page-link">{{ $page }}</span></li>
-                            @else
-                                <li class="page-item"><a class="page-link" href="{{ $url }}">{{ $page }}</a></li>
-                            @endif
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                        @foreach ($prodis as $prodi)
+                            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                                <td class="table-td whitespace-nowrap">
+                                    <span class="font-medium tabular-nums text-slate-900 dark:text-white">{{ $prodi->kode_prodi }}</span>
+                                    @if ($prodi->singkatan) <x-badge tone="primary" class="ml-2">{{ $prodi->singkatan }}</x-badge> @endif
+                                </td>
+                                <td class="table-td">
+                                    <a href="{{ route('prodi.show', $prodi) }}" class="font-medium text-slate-900 hover:text-primary-700 dark:text-white dark:hover:text-primary-300">{{ $prodi->nama_prodi }}</a>
+                                    @if ($prodi->fakultas) <p class="text-xs text-slate-500 dark:text-slate-400">{{ $prodi->fakultas }}</p> @endif
+                                </td>
+                                <td class="table-td">
+                                    @if ($prodi->kaprodi)
+                                        <span class="text-slate-700 dark:text-slate-200">{{ $prodi->kaprodi }}</span>
+                                        @if (str_starts_with($prodi->kaprodi_jabatan, 'Plt')) <x-badge tone="warning" class="ml-1">Plt.</x-badge> @endif
+                                    @else
+                                        <span class="text-slate-400 dark:text-slate-500">Belum diisi</span>
+                                    @endif
+                                </td>
+                                <td class="table-td text-right font-semibold tabular-nums">{{ $prodi->mahasiswas_count }}</td>
+                                <td class="table-td">
+                                    <div class="flex justify-end gap-1">
+                                        <x-button variant="ghost" size="icon" :href="route('prodi.show', $prodi)" title="Lihat detail"><x-icon name="eye" class="size-4" /><span class="sr-only">Lihat {{ $prodi->nama_prodi }}</span></x-button>
+                                        <x-button variant="ghost" size="icon" :href="route('prodi.edit', $prodi)" title="Edit"><x-icon name="pencil" class="size-4" /><span class="sr-only">Edit {{ $prodi->nama_prodi }}</span></x-button>
+                                        <x-button variant="ghost" size="icon" class="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10" title="Hapus"
+                                            x-on:click="$store.confirm.ask({{ \Illuminate\Support\Js::from(['title' => 'Hapus program studi?', 'message' => $prodi->mahasiswas_count > 0 ? $prodi->nama_prodi.' masih memiliki '.$prodi->mahasiswas_count.' mahasiswa sehingga tidak dapat dihapus.' : $prodi->nama_prodi.' akan dihapus.', 'action' => route('prodi.destroy', $prodi)]) }})">
+                                            <x-icon name="trash-2" class="size-4" /><span class="sr-only">Hapus {{ $prodi->nama_prodi }}</span>
+                                        </x-button>
+                                    </div>
+                                </td>
+                            </tr>
                         @endforeach
-
-                        @if($prodis->hasMorePages())
-                            <li class="page-item"><a class="page-link" href="{{ $prodis->nextPageUrl() }}">&raquo;</a></li>
-                        @else
-                            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
-                        @endif
-                    </ul>
-                </nav>
+                    </tbody>
+                </table>
             </div>
+            @if ($prodis->hasPages())
+                <div class="border-t border-slate-200 px-5 py-4 dark:border-slate-800">{{ $prodis->links() }}</div>
+            @endif
         @endif
-    </div>
-</div>
-@endsection
+    </section>
+</x-app-layout>
