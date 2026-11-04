@@ -56,4 +56,15 @@ class DashboardTest extends TestCase
         $mahasiswa->delete();
         $this->assertSame(0, $stats->get()['total']);
     }
+
+    public function test_dashboard_renders_from_a_serializing_cache_store(): void
+    {
+        // Store "array" di phpunit tidak menyerialisasi; database store melakukannya seperti file/redis.
+        config(['cache.default' => 'database']);
+        Mahasiswa::factory()->count(2)->create();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('dashboard'))->assertOk();
+        $this->actingAs($user)->get(route('dashboard'))->assertOk()->assertViewHas('totalMahasiswa', 2);
+    }
 }

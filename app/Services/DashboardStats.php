@@ -4,12 +4,14 @@ namespace App\Services;
 
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 /**
  * Statistik dashboard: dihitung dengan sedikit query agregat lalu di-cache.
  * Cache dibersihkan oleh model event Mahasiswa/Prodi (lihat booted() di kedua model).
+ *
+ * Yang di-cache hanya array skalar: Laravel 13 menolak unserialize objek dari cache
+ * (config cache.serializable_classes = false) untuk mencegah gadget chain attack.
  */
 class DashboardStats
 {
@@ -21,8 +23,8 @@ class DashboardStats
      * @return array{
      *     total: int, laki: int, perempuan: int, totalProdi: int,
      *     sebelum: array{total: int, laki: int, perempuan: int, prodi: int},
-     *     perProdi: Collection<int, Prodi>,
-     *     terbaru: Collection<int, Mahasiswa>
+     *     perProdi: list<array{id: int, label: string, nama_prodi: string, mahasiswas_count: int}>,
+     *     terbaru: list<array{id: int, nim: string, nama: string, jenis_kelamin: string, prodi: string, created_at: string}>
      * }
      */
     public function get(): array
@@ -79,8 +81,20 @@ class DashboardStats
                 'perempuan' => (int) $agregat->perempuan_sebelum,
                 'prodi' => $perProdi->filter(fn (Prodi $prodi) => $prodi->created_at <= $batas)->count(),
             ],
-            'perProdi' => $perProdi,
-            'terbaru' => $terbaru,
+            'perProdi' => $perProdi->map(fn (Prodi $prodi) => [
+                'id' => $prodi->id,
+                'label' => $prodi->label(),
+                'nama_prodi' => $prodi->nama_prodi,
+                'mahasiswas_count' => (int) $prodi->mahasiswas_count,
+            ])->all(),
+            'terbaru' => $terbaru->map(fn (Mahasiswa $mahasiswa) => [
+                'id' => $mahasiswa->id,
+                'nim' => $mahasiswa->nim,
+                'nama' => $mahasiswa->nama,
+                'jenis_kelamin' => $mahasiswa->jenis_kelamin,
+                'prodi' => $mahasiswa->prodi->nama_prodi,
+                'created_at' => $mahasiswa->created_at->toIso8601String(),
+            ])->all(),
         ];
     }
 
