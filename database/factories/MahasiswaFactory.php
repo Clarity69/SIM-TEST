@@ -25,8 +25,9 @@ class MahasiswaFactory extends Factory
         $gender = $jenisKelamin === 'Laki-laki' ? 'male' : 'female';
 
         return [
-            // Format NIM: 2024 (angkatan) + 120 + 2 digit urut, contoh 202412007.
-            'nim' => $faker->unique()->numerify('2024120##'),
+            // Format NIM: angkatan + 120 + 2 digit urut, contoh 202412007. Closure: hanya dibuat
+            // bila NIM tidak diisi, agar seeder yang menentukan NIM sendiri tidak menghabiskan nilai unik.
+            'nim' => fn (array $attributes) => $faker->unique()->numerify(($attributes['angkatan'] ?? 2024).'120##'),
             'nama' => $faker->firstName($gender).' '.$faker->lastName($gender),
             'jenis_kelamin' => $jenisKelamin,
             'tanggal_lahir' => $faker->dateTimeBetween('-24 years', '-18 years')->format('Y-m-d'),
