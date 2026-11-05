@@ -90,6 +90,7 @@
                     </select>
                     <x-button size="sm" variant="secondary" icon="refresh-cw" x-on:click="$refs.aksi.value = 'status'; $refs.bulkForm.submit()">Ubah status</x-button>
                     <x-button size="sm" variant="secondary" icon="download" x-on:click="$refs.aksi.value = 'export'; $refs.bulkForm.submit()">Ekspor terpilih</x-button>
+                    <x-button size="sm" variant="secondary" icon="id-card" x-on:click="$refs.aksi.value = 'kartu'; $refs.bulkForm.submit()">Cetak kartu</x-button>
                     <x-button size="sm" variant="danger-soft" icon="trash-2"
                         x-on:click="$refs.aksi.value = 'hapus'; $store.confirm.ask({ title: 'Hapus mahasiswa terpilih?', message: selected.length + ' mahasiswa akan dipindahkan ke Sampah.', confirmLabel: 'Hapus', form: $refs.bulkForm })">Hapus</x-button>
                     <x-button size="sm" variant="ghost" x-on:click="selected = []"><x-icon name="x" class="size-4" /><span class="sr-only">Batalkan pilihan</span></x-button>

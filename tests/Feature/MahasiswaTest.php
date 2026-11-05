@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mail\MahasiswaPdfMail;
+use App\Models\ActivityLog;
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
 use App\Models\User;
@@ -101,6 +102,7 @@ class MahasiswaTest extends TestCase
 
         $hitung = function () use ($user): int {
             Cache::flush(); // bandingkan dua request tanpa cache (cold)
+            ActivityLog::simpanAntrean(); // log dari factory di luar request tidak ikut dihitung
             DB::flushQueryLog();
             DB::enableQueryLog();
             $this->actingAs($user)->get(route('mahasiswa.index'))->assertOk();

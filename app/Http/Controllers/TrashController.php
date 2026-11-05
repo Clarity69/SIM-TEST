@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Mahasiswa;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
@@ -54,21 +55,30 @@ class TrashController extends Controller
         $mahasiswas = Mahasiswa::onlyTrashed()->whereKey($validated['ids'])->get();
         $gagal = 0;
 
-        foreach ($mahasiswas as $mahasiswa) {
-            if ($validated['aksi'] === 'hapus') {
-                $mahasiswa->forceDelete();
+        ActivityLog::tanpaCatat(function () use ($mahasiswas, $validated, &$gagal) {
+            foreach ($mahasiswas as $mahasiswa) {
+                if ($validated['aksi'] === 'hapus') {
+                    $mahasiswa->forceDelete();
 
-                continue;
-            }
+                    continue;
+                }
 
-            try {
-                $this->pulihkan($mahasiswa);
-            } catch (UniqueConstraintViolationException) {
-                $gagal++;
+                try {
+                    $this->pulihkan($mahasiswa);
+                } catch (UniqueConstraintViolationException) {
+                    $gagal++;
+                }
             }
-        }
+        });
 
         $berhasil = $mahasiswas->count() - $gagal;
+
+        if ($berhasil > 0) {
+            ActivityLog::catat('bulk', ($validated['aksi'] === 'hapus' ? 'Menghapus permanen ' : 'Memulihkan ')."{$berhasil} mahasiswa dari Sampah", properties: [
+                'contoh' => $mahasiswas->take(5)->map(fn ($m) => "{$m->nama} ({$m->nim})")->all(),
+            ]);
+        }
+
         $pesan = $validated['aksi'] === 'hapus'
             ? "{$berhasil} data dihapus permanen."
             : "{$berhasil} data dipulihkan.".($gagal ? " {$gagal} gagal karena NIM sudah dipakai mahasiswa aktif." : '');
@@ -80,12 +90,16 @@ class TrashController extends Controller
     {
         $jumlah = 0;
 
-        Mahasiswa::onlyTrashed()->select('id', 'foto')->chunkById(200, function ($mahasiswas) use (&$jumlah) {
+        ActivityLog::tanpaCatat(fn () => Mahasiswa::onlyTrashed()->select('id', 'foto')->chunkById(200, function ($mahasiswas) use (&$jumlah) {
             foreach ($mahasiswas as $mahasiswa) {
                 $mahasiswa->forceDelete();
                 $jumlah++;
             }
-        });
+        }));
+
+        if ($jumlah > 0) {
+            ActivityLog::catat('bulk', "Mengosongkan Sampah ({$jumlah} data dihapus permanen)");
+        }
 
         return back()->with('success', "Sampah dikosongkan ({$jumlah} data dihapus permanen).");
     }

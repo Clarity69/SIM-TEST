@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\MahasiswaExport;
 use App\Http\Requests\MahasiswaRequest;
 use App\Mail\MahasiswaPdfMail;
+use App\Models\ActivityLog;
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
 use App\Models\User;
@@ -12,6 +13,7 @@ use App\Notifications\MahasiswaBulkChanged;
 use App\Notifications\MahasiswaChanged;
 use App\Services\DashboardStats;
 use App\Services\FotoMahasiswa;
+use App\Services\KartuMahasiswa;
 use App\Services\MahasiswaPdf;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -83,7 +85,16 @@ class MahasiswaController extends Controller
     {
         $mahasiswa->load('prodi');
 
-        return view('mahasiswa.show', compact('mahasiswa'));
+        $riwayat = ActivityLog::query()
+            ->where('subject_type', 'mahasiswa')
+            ->where('subject_id', $mahasiswa->id)
+            ->latest('created_at')
+            ->latest('id')
+            ->limit(8)
+            ->get();
+        $namaProdi = Prodi::opsi()->pluck('nama_prodi', 'id')->all();
+
+        return view('mahasiswa.show', compact('mahasiswa', 'riwayat', 'namaProdi'));
     }
 
     /**
@@ -140,10 +151,10 @@ class MahasiswaController extends Controller
     /**
      * Aksi massal dari tabel: hapus (ke Sampah), ubah status, atau ekspor baris terpilih.
      */
-    public function bulk(Request $request): RedirectResponse|BinaryFileResponse
+    public function bulk(Request $request): RedirectResponse|BinaryFileResponse|Response
     {
         $validated = $request->validate([
-            'aksi' => ['required', 'in:hapus,status,export'],
+            'aksi' => ['required', 'in:hapus,status,export,kartu'],
             'ids' => ['required', 'array', 'min:1', 'max:500'],
             'ids.*' => ['integer'],
             'status' => ['required_if:aksi,status', 'nullable', Rule::in(array_keys(Mahasiswa::STATUS))],
@@ -151,7 +162,21 @@ class MahasiswaController extends Controller
 
         $ids = array_map('intval', $validated['ids']);
 
+        if ($validated['aksi'] === 'kartu') {
+            if (count($ids) > 100) {
+                return back()->with('error', 'Cetak kartu maksimal 100 mahasiswa sekaligus.');
+            }
+
+            $mahasiswas = Mahasiswa::query()->whereKey($ids)->orderBy('nim')->get();
+            $kartu = app(KartuMahasiswa::class);
+            ActivityLog::catat('export', "Mencetak kartu {$mahasiswas->count()} mahasiswa", properties: ['ids' => $ids]);
+
+            return $kartu->pdf($mahasiswas)->download($kartu->namaFile($mahasiswas));
+        }
+
         if ($validated['aksi'] === 'export') {
+            ActivityLog::catat('export', 'Mengekspor '.count($ids).' mahasiswa terpilih ke Excel', properties: ['jumlah' => count($ids)]);
+
             return Excel::download(new MahasiswaExport(ids: $ids), 'mahasiswa-terpilih-'.now()->format('Ymd-His').'.xlsx');
         }
 
@@ -159,18 +184,26 @@ class MahasiswaController extends Controller
             $jumlah = Mahasiswa::query()->whereKey($ids)->update(['status' => $validated['status'], 'updated_at' => now()]);
             DashboardStats::forget();
             Mahasiswa::bumpVersiDaftar();
+            ActivityLog::catat('bulk', "Mengubah status {$jumlah} mahasiswa menjadi {$validated['status']}", properties: ['ids' => $ids, 'status' => $validated['status']]);
 
             return back()->with('success', "Status {$jumlah} mahasiswa diubah menjadi {$validated['status']}.");
         }
 
         $mahasiswas = Mahasiswa::query()->whereKey($ids)->get(['id', 'nim', 'nama', 'jenis_kelamin', 'prodi_id']);
 
-        foreach ($mahasiswas as $mahasiswa) {
-            $mahasiswa->forceFill(['deleted_by' => $request->user()->id])->saveQuietly();
-            $mahasiswa->delete();
-        }
+        ActivityLog::tanpaCatat(function () use ($mahasiswas, $request) {
+            foreach ($mahasiswas as $mahasiswa) {
+                $mahasiswa->forceFill(['deleted_by' => $request->user()->id])->saveQuietly();
+                $mahasiswa->delete();
+            }
+        });
 
         if ($mahasiswas->isNotEmpty()) {
+            ActivityLog::catat('bulk', "Memindahkan {$mahasiswas->count()} mahasiswa ke Sampah", properties: [
+                'ids' => $mahasiswas->modelKeys(),
+                'contoh' => $mahasiswas->take(5)->map(fn ($m) => "{$m->nama} ({$m->nim})")->all(),
+            ]);
+
             $admin = User::query()->where('role', User::ROLE_ADMIN)->where('notify_mahasiswa_changes', true)->get();
             Notification::send($admin, new MahasiswaBulkChanged(
                 'dipindahkan ke Sampah',
@@ -189,6 +222,7 @@ class MahasiswaController extends Controller
     public function pdf(Request $request, MahasiswaPdf $pdf): Response
     {
         $filters = $this->filters($request);
+        ActivityLog::catat('export', 'Mencetak PDF daftar mahasiswa', properties: ['filter' => array_filter($filters)]);
 
         return $pdf->daftar($filters)->stream($pdf->namaFileDaftar($filters));
     }
@@ -198,6 +232,8 @@ class MahasiswaController extends Controller
      */
     public function pdfShow(Mahasiswa $mahasiswa, MahasiswaPdf $pdf): Response
     {
+        ActivityLog::catat('export', "Mencetak PDF biodata {$mahasiswa->nama}", $mahasiswa);
+
         return $pdf->detail($mahasiswa)->stream($pdf->namaFileDetail($mahasiswa));
     }
 

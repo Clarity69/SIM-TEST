@@ -52,7 +52,8 @@
             @can('admin')
                 <div class="space-y-1">
                     <p class="px-3 text-[11px] font-semibold uppercase tracking-wider text-primary-300" x-bind:class="$store.sidebar.collapsed ? 'lg:sr-only' : ''">Admin</p>
-                    <x-sidebar-link :href="route('users.index')" icon="users" :active="request()->routeIs('users.*')">Pengguna</x-sidebar-link>
+                    <x-sidebar-link :href="route('users.index')" icon="user-cog" :active="request()->routeIs('users.*')">Pengguna</x-sidebar-link>
+                    <x-sidebar-link :href="route('activity.index')" icon="history" :active="request()->routeIs('activity.*')">Log Aktivitas</x-sidebar-link>
                     <x-sidebar-link :href="route('trash.index')" icon="trash-2" :active="request()->routeIs('trash.*')">Sampah</x-sidebar-link>
                 </div>
             @endcan
@@ -73,11 +74,12 @@
         <button type="button" class="hidden items-center gap-3 rounded-xl border border-white/10 px-3 py-2.5 text-sm font-medium text-primary-100 hover:bg-white/5 hover:text-white lg:flex"
             x-bind:class="$store.sidebar.collapsed ? 'justify-center px-0' : ''"
             x-on:click="$store.sidebar.toggleCollapse()"
-            x-bind:aria-expanded="(! $store.sidebar.collapsed).toString()" aria-controls="sidebar">
+            x-bind:aria-expanded="(! $store.sidebar.collapsed).toString()" aria-controls="sidebar"
+            x-bind:title="$store.sidebar.collapsed ? 'Tampilkan menu lengkap' : null">
             <x-icon name="panel-left-close" x-show="! $store.sidebar.collapsed" />
             <x-icon name="panel-left-open" x-show="$store.sidebar.collapsed" x-cloak />
-            <span x-show="! $store.sidebar.collapsed">Ciutkan sidebar</span>
-            <span class="sr-only" x-show="$store.sidebar.collapsed">Lebarkan sidebar</span>
+            <span x-show="! $store.sidebar.collapsed">Tampilkan ikon saja</span>
+            <span class="sr-only" x-show="$store.sidebar.collapsed">Tampilkan menu lengkap</span>
         </button>
     </aside>
 

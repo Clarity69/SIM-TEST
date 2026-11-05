@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\KartuMahasiswaController;
 use App\Http\Controllers\MahasiswaController;
 use App\Http\Controllers\MahasiswaExportController;
 use App\Http\Controllers\MahasiswaImportController;
@@ -21,6 +23,12 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
+// Verifikasi kartu mahasiswa dari QR: publik, tetapi URL wajib bertanda tangan (signed).
+Route::get('/kartu/verifikasi/{mahasiswa}', [KartuMahasiswaController::class, 'verifikasi'])
+    ->whereNumber('mahasiswa')
+    ->middleware(['signed', 'throttle:30,1'])
+    ->name('kartu.verifikasi');
+
 // Halaman data: wajib login dan email sudah diverifikasi
 Route::middleware(['auth', 'verified'])->group(function () {
 
@@ -33,6 +41,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('throttle:5,1')
         ->name('mahasiswa.pdf.email');
     Route::get('/mahasiswa/{mahasiswa}/pdf', [MahasiswaController::class, 'pdfShow'])->name('mahasiswa.pdf.show');
+    Route::get('/mahasiswa/{mahasiswa}/kartu', [KartuMahasiswaController::class, 'show'])->name('mahasiswa.kartu');
     Route::post('/mahasiswa/{mahasiswa}/pdf/email', [MahasiswaController::class, 'emailPdfShow'])
         ->middleware('throttle:5,1')
         ->name('mahasiswa.pdf.show.email');
@@ -56,6 +65,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/pengguna', [UserController::class, 'index'])->name('users.index');
         Route::patch('/pengguna/{user}/role', [UserController::class, 'updateRole'])->name('users.role');
         Route::delete('/pengguna/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+        Route::get('/aktivitas', [ActivityLogController::class, 'index'])->name('activity.index');
 
         Route::get('/sampah', [TrashController::class, 'index'])->name('trash.index');
         Route::post('/sampah/aksi', [TrashController::class, 'bulk'])->name('trash.bulk');

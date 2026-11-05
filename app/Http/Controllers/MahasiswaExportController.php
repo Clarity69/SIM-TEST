@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exports\MahasiswaExport;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Excel as ExcelFormat;
 use Maatwebsite\Excel\Facades\Excel;
@@ -17,6 +18,7 @@ class MahasiswaExportController extends Controller
     {
         $csv = $request->query('format') === 'csv';
         $filters = $request->only(['search', 'prodi_id', 'jenis_kelamin', 'status', 'angkatan', 'sort', 'direction']);
+        ActivityLog::catat('export', 'Mengekspor data mahasiswa ke '.($csv ? 'CSV' : 'Excel'), properties: ['filter' => array_filter($filters)]);
 
         return Excel::download(
             new MahasiswaExport($filters),

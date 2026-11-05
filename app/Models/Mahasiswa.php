@@ -101,6 +101,20 @@ class Mahasiswa extends Model
 
         // Foto ikut dihapus hanya saat data dihapus permanen (bukan saat masuk Sampah).
         static::forceDeleted(fn (Mahasiswa $mahasiswa) => app(FotoMahasiswa::class)->hapus($mahasiswa->foto));
+
+        // Log aktivitas (disimpan setelah respons terkirim, lihat ActivityLog::catat()).
+        static::created(fn (Mahasiswa $m) => ActivityLog::catat('created', "Menambahkan mahasiswa {$m->nama}", $m));
+        static::updated(function (Mahasiswa $m) {
+            $perubahan = ActivityLog::perubahan($m);
+
+            // Pemulihan dari Sampah juga memicu "updated" (deleted_at berubah); dicatat sebagai "restored".
+            if ($perubahan !== []) {
+                ActivityLog::catat('updated', "Mengubah data mahasiswa {$m->nama}", $m, ['perubahan' => $perubahan]);
+            }
+        });
+        static::softDeleted(fn (Mahasiswa $m) => ActivityLog::catat('deleted', "Memindahkan {$m->nama} ke Sampah", $m));
+        static::restored(fn (Mahasiswa $m) => ActivityLog::catat('restored', "Memulihkan {$m->nama} dari Sampah", $m));
+        static::forceDeleted(fn (Mahasiswa $m) => ActivityLog::catat('force_deleted', "Menghapus permanen {$m->nama}", $m));
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\MahasiswaTemplateExport;
 use App\Exports\SheetArrayExport;
+use App\Models\ActivityLog;
 use App\Models\User;
 use App\Notifications\MahasiswaBulkChanged;
 use App\Services\ImportMahasiswa;
@@ -88,6 +89,11 @@ class MahasiswaImportController extends Controller
         Cache::put($this->kunci($token), $sesi, self::TTL);
 
         if ($hasil['berhasil'] > 0) {
+            ActivityLog::catat('import', "Mengimpor {$hasil['berhasil']} mahasiswa dari {$sesi['nama_file']}", properties: [
+                'berhasil' => $hasil['berhasil'],
+                'dilewati' => $hasil['dilewati'],
+                'contoh' => $hasil['contoh'],
+            ]);
             $admin = User::query()->where('role', User::ROLE_ADMIN)->where('notify_mahasiswa_changes', true)->get();
             Notification::send($admin, new MahasiswaBulkChanged('ditambahkan lewat impor', $hasil['berhasil'], $hasil['contoh'], $request->user()->name));
         }

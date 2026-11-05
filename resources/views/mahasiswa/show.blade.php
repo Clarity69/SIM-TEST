@@ -16,6 +16,7 @@
                     <x-button type="submit" variant="secondary" icon="send" :loading="true" title="Kirim PDF biodata ke {{ auth()->user()->email }}">Kirim PDF</x-button>
                 </form>
                 <x-button variant="secondary" icon="printer" :href="route('mahasiswa.pdf.show', $mahasiswa)" target="_blank">Cetak PDF</x-button>
+                <x-button variant="secondary" icon="id-card" :href="route('mahasiswa.kartu', $mahasiswa)" target="_blank">Kartu</x-button>
                 <x-button variant="secondary" icon="pencil" :href="route('mahasiswa.edit', $mahasiswa)">Edit</x-button>
                 <x-button variant="danger-soft" icon="trash-2"
                     x-on:click="$store.confirm.ask({{ \Illuminate\Support\Js::from(['title' => 'Hapus mahasiswa?', 'message' => 'Data '.$mahasiswa->nama.' ('.$mahasiswa->nim.') akan dihapus.', 'action' => route('mahasiswa.destroy', $mahasiswa)]) }})">Hapus</x-button>
@@ -63,4 +64,23 @@
             </x-card>
         @endforeach
     </div>
+
+    <x-card title="Riwayat Aktivitas" description="Perubahan terakhir pada data mahasiswa ini">
+        @can('admin')
+            <x-slot:actions>
+                <a href="{{ route('activity.index', ['search' => $mahasiswa->nim]) }}" class="inline-flex items-center gap-1 text-sm font-semibold text-primary-700 hover:text-primary-800 dark:text-primary-300">
+                    Semua log <x-icon name="arrow-up-right" class="size-4" />
+                </a>
+            </x-slot:actions>
+        @endcan
+        @if ($riwayat->isEmpty())
+            <p class="text-sm text-slate-500 dark:text-slate-400">Belum ada aktivitas tercatat untuk mahasiswa ini.</p>
+        @else
+            <ol>
+                @foreach ($riwayat as $log)
+                    @include('activity._item', ['log' => $log, 'namaProdi' => $namaProdi, 'tanpaSubjek' => true])
+                @endforeach
+            </ol>
+        @endif
+    </x-card>
 </x-app-layout>

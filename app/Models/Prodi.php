@@ -41,6 +41,14 @@ class Prodi extends Model
 
         static::saved($forget);
         static::deleted($forget);
+
+        static::created(fn (Prodi $p) => ActivityLog::catat('created', "Menambahkan program studi {$p->nama_prodi}", $p));
+        static::updated(function (Prodi $p) {
+            if (($perubahan = ActivityLog::perubahan($p)) !== []) {
+                ActivityLog::catat('updated', "Mengubah program studi {$p->nama_prodi}", $p, ['perubahan' => $perubahan]);
+            }
+        });
+        static::deleted(fn (Prodi $p) => ActivityLog::catat('force_deleted', "Menghapus program studi {$p->nama_prodi}", $p));
     }
 
     public const OPSI_CACHE_KEY = 'prodi.opsi';

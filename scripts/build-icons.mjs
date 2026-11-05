@@ -7,14 +7,16 @@ const require = createRequire(import.meta.url);
 const dir = require.resolve('lucide-static/package.json').replace('package.json', 'icons/');
 
 const icons = [
-    'archive-restore', 'arrow-down', 'arrow-up', 'arrow-up-right', 'bell', 'building-2', 'calendar',
-    'check', 'chevron-down', 'chevron-left', 'chevron-right', 'chevrons-up-down', 'circle-alert',
-    'circle-check', 'download', 'eye', 'eye-off', 'file-down', 'file-spreadsheet', 'file-text',
-    'graduation-cap', 'house', 'inbox', 'info', 'key-round', 'layout-dashboard', 'loader-circle',
-    'lock', 'log-out', 'mail', 'map-pin', 'menu', 'minus', 'moon', 'panel-left-close', 'panel-left-open',
-    'pencil', 'phone', 'plus', 'printer', 'refresh-cw', 'save', 'search', 'send', 'shield-check',
-    'sun', 'trash-2', 'trending-down', 'trending-up', 'triangle-alert', 'upload', 'user', 'user-plus',
-    'user-round', 'users', 'x',
+    'activity', 'archive-restore', 'arrow-down', 'arrow-right', 'arrow-up', 'arrow-up-right',
+    'badge-check', 'bell', 'building-2', 'calendar', 'calendar-range', 'chart-column', 'check',
+    'chevron-down', 'chevron-left', 'chevron-right', 'chevrons-up-down', 'circle-alert',
+    'circle-check', 'command', 'corner-down-left', 'download', 'eye', 'eye-off', 'file-down',
+    'file-spreadsheet', 'file-text', 'graduation-cap', 'history', 'house', 'id-card', 'inbox', 'info',
+    'key-round', 'layout-dashboard', 'list-checks', 'loader-circle', 'lock', 'log-in', 'log-out',
+    'mail', 'map-pin', 'menu', 'minus', 'moon', 'panel-left-close', 'panel-left-open', 'pencil',
+    'phone', 'plus', 'printer', 'qr-code', 'refresh-cw', 'rotate-ccw', 'save', 'search', 'send',
+    'shield-check', 'sun', 'trash-2', 'trending-down', 'trending-up', 'triangle-alert', 'upload',
+    'user', 'user-cog', 'user-plus', 'user-round', 'users', 'x',
 ];
 
 const entries = icons.map((name) => {

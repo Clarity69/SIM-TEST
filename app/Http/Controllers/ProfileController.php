@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -76,6 +77,7 @@ class ProfileController extends Controller
         $request->user()->update([
             'password' => Hash::make($validated['password']),
         ]);
+        ActivityLog::catat('account', 'Mengganti password akun sendiri', $request->user());
 
         return ($dariModal ? back() : redirect()->route('profile.edit'))->with('success', 'Password berhasil diperbarui.');
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,7 +33,12 @@ class UserController extends Controller
             return back()->with('error', 'Anda tidak dapat menurunkan role akun sendiri.');
         }
 
+        $lama = $user->role;
         $user->forceFill(['role' => $validated['role']])->save();
+
+        if ($lama !== $validated['role']) {
+            ActivityLog::catat('account', "Mengubah role {$user->name} menjadi ".User::ROLES[$validated['role']], $user, ['role' => [$lama, $validated['role']]]);
+        }
 
         return back()->with('success', "Role {$user->name} diubah menjadi ".User::ROLES[$validated['role']].'.');
     }
@@ -47,6 +53,7 @@ class UserController extends Controller
             return back()->with('error', 'Admin terakhir tidak dapat dihapus.');
         }
 
+        ActivityLog::catat('account', "Menghapus akun {$user->name}", $user);
         $user->delete();
 
         return back()->with('success', "Akun {$user->name} dihapus.");
