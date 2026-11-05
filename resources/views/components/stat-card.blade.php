@@ -33,7 +33,9 @@
     <div>
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ $label }}</p>
         <p class="mt-1 text-3xl font-bold tabular-nums text-slate-900 dark:text-white">{{ number_format($value, 0, ',', '.') }}</p>
-        @if ($delta !== null)
+        @if ($delta !== null && $since === null)
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Belum ada perubahan tercatat</p>
+        @elseif ($delta !== null)
             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 <span @class(['font-semibold tabular-nums', 'text-emerald-700 dark:text-emerald-400' => $delta > 0, 'text-red-700 dark:text-red-400' => $delta < 0])>{{ $delta > 0 ? '+' : '' }}{{ number_format($delta, 0, ',', '.') }}</span>
                 dari data sebelumnya

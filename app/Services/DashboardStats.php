@@ -4,8 +4,9 @@ namespace App\Services;
 
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+
+use function Illuminate\Support\defer;
 
 /**
  * Statistik dashboard: dihitung dengan sedikit query agregat lalu di-cache.
@@ -19,6 +20,9 @@ class DashboardStats
     public const CACHE_KEY = 'dashboard.stats.v2';
 
     public const TTL_SECONDS = 300;
+
+    /** Jumlah terakhir per kategori + jumlah sebelum aksi terakhir (permanen, bukan TTL). */
+    public const TREN_KEY = 'dashboard.tren';
 
     /**
      * @return array{
@@ -35,56 +39,70 @@ class DashboardStats
         return Cache::remember(self::CACHE_KEY, self::TTL_SECONDS, fn () => $this->compute());
     }
 
+    /**
+     * Dipanggil setiap data mahasiswa/prodi berubah: buang cache, lalu hitung ulang setelah
+     * respons terkirim (sekali per request) agar tren tercatat per aksi dan dashboard tetap hangat.
+     */
     public static function forget(): void
     {
         Cache::forget(self::CACHE_KEY);
+        defer(static fn () => app(self::class)->get(), 'dashboard-stats-refresh', always: true);
     }
 
     /**
-     * Tren dihitung per perubahan data, bukan per periode:
-     * jumlah sekarang dibanding jumlah tepat sebelum perubahan terakhir (tambah/hapus)
-     * di kategori tersebut. Tambah 1 data -> naik, hapus 1 data -> turun.
+     * Bandingkan jumlah sekarang dengan jumlah terakhir yang diketahui. Kategori yang berubah
+     * menyimpan jumlah lamanya sebagai "sebelum" beserta waktu perubahannya.
+     * Tanpa catatan sebelumnya (pertama kali), tren dianggap 0.
      *
-     * Query 1: waktu perubahan terakhir per kategori (MAX created_at / deleted_at).
-     * Query 2: jumlah sekarang dan jumlah sebelum perubahan terakhir, satu agregat.
-     * Query 3: jumlah mahasiswa per prodi (withCount), sekaligus total prodi.
-     * Query 4 + 5: 5 mahasiswa terbaru beserta prodinya (eager load).
-     * Query 6: jumlah per angkatan × status (GROUP BY) untuk grafik dengan filter rentang angkatan.
+     * @param  array<string, int>  $sekarang
+     * @return array<string, array{jumlah: int, sebelum: int, waktu: ?string}>
+     */
+    private function catatTren(array $sekarang): array
+    {
+        $catatan = Cache::get(self::TREN_KEY, []);
+        $baru = [];
+
+        foreach ($sekarang as $kategori => $jumlah) {
+            $lama = $catatan[$kategori] ?? null;
+
+            $baru[$kategori] = match (true) {
+                $lama === null => ['jumlah' => $jumlah, 'sebelum' => $jumlah, 'waktu' => null],
+                $lama['jumlah'] !== $jumlah => ['jumlah' => $jumlah, 'sebelum' => $lama['jumlah'], 'waktu' => now()->toIso8601String()],
+                default => $lama,
+            };
+        }
+
+        if ($baru !== $catatan) {
+            Cache::forever(self::TREN_KEY, $baru);
+        }
+
+        return $baru;
+    }
+
+    /**
+     * Tren dihitung per AKSI, bukan per periode atau tanggal data: jumlah sekarang dibanding
+     * jumlah tepat sebelum aksi terakhir yang mengubah kategori tersebut. Tambah 1 data -> +1
+     * (naik), hapus 1 data -> -1 (turun); aksi massal/impor/seeder dihitung sebagai satu aksi.
+     *
+     * Jumlah terakhir yang diketahui disimpan permanen di cache (TREN_KEY). Setiap kali data
+     * berubah, forget() menjadwalkan hitung ulang setelah respons terkirim, sehingga
+     * perbandingan selalu terhadap kondisi sebelum aksi itu.
+     *
+     * Query 1: jumlah total/laki/perempuan (satu agregat).
+     * Query 2: jumlah mahasiswa per prodi (withCount), sekaligus total prodi.
+     * Query 3 + 4: 5 mahasiswa terbaru beserta prodinya (eager load).
+     * Query 5: jumlah per angkatan × status (GROUP BY) untuk grafik dengan filter rentang angkatan.
      */
     private function compute(): array
     {
-        $kategori = [
-            'total' => '1 = 1',
-            'laki' => "jenis_kelamin = 'Laki-laki'",
-            'perempuan' => "jenis_kelamin = 'Perempuan'",
-        ];
-
-        $waktu = Mahasiswa::withTrashed()->toBase();
-        foreach ($kategori as $kunci => $syarat) {
-            $waktu->selectRaw("MAX(created_at) FILTER (WHERE {$syarat}) AS {$kunci}_dibuat")
-                ->selectRaw("MAX(deleted_at) FILTER (WHERE {$syarat}) AS {$kunci}_dihapus");
-        }
-        $waktu = $waktu->first();
-
-        $agregat = Mahasiswa::withTrashed()->toBase();
-        $terakhir = [];
-        foreach ($kategori as $kunci => $syarat) {
-            $terakhir[$kunci] = collect([$waktu->{"{$kunci}_dibuat"}, $waktu->{"{$kunci}_dihapus"}])->filter()->max();
-
-            $agregat->selectRaw("COUNT(*) FILTER (WHERE {$syarat} AND deleted_at IS NULL) AS {$kunci}");
-
-            // Populasi tepat sebelum perubahan terakhir: sudah dibuat sebelum T dan belum dihapus saat T.
-            $terakhir[$kunci] === null
-                ? $agregat->selectRaw("0 AS {$kunci}_sebelum")
-                : $agregat->selectRaw(
-                    "COUNT(*) FILTER (WHERE {$syarat} AND created_at < ? AND (deleted_at IS NULL OR deleted_at >= ?)) AS {$kunci}_sebelum",
-                    [$terakhir[$kunci], $terakhir[$kunci]],
-                );
-        }
-        $agregat = $agregat->first();
+        $agregat = Mahasiswa::query()->toBase()
+            ->selectRaw('COUNT(*) AS total')
+            ->selectRaw("COUNT(*) FILTER (WHERE jenis_kelamin = 'Laki-laki') AS laki")
+            ->selectRaw("COUNT(*) FILTER (WHERE jenis_kelamin = 'Perempuan') AS perempuan")
+            ->first();
 
         $perProdi = Prodi::query()
-            ->select('id', 'kode_prodi', 'singkatan', 'nama_prodi', 'kaprodi', 'created_at')
+            ->select('id', 'kode_prodi', 'singkatan', 'nama_prodi', 'kaprodi')
             ->withCount([
                 'mahasiswas',
                 'mahasiswas as laki_count' => fn ($q) => $q->where('jenis_kelamin', 'Laki-laki'),
@@ -110,24 +128,20 @@ class DashboardStats
             ->orderBy('angkatan')
             ->get();
 
+        $tren = $this->catatTren([
+            'total' => (int) $agregat->total,
+            'laki' => (int) $agregat->laki,
+            'perempuan' => (int) $agregat->perempuan,
+            'prodi' => $perProdi->count(),
+        ]);
+
         return [
             'total' => (int) $agregat->total,
             'laki' => (int) $agregat->laki,
             'perempuan' => (int) $agregat->perempuan,
             'totalProdi' => $perProdi->count(),
-            'sebelum' => [
-                'total' => (int) $agregat->total_sebelum,
-                'laki' => (int) $agregat->laki_sebelum,
-                'perempuan' => (int) $agregat->perempuan_sebelum,
-                // Prodi dihapus permanen; yang bisa dilacak hanya penambahan terakhir.
-                'prodi' => $perProdi->filter(fn (Prodi $prodi) => $prodi->created_at < $perProdi->max('created_at'))->count(),
-            ],
-            'terakhir' => [
-                'total' => $terakhir['total'] ? Carbon::parse($terakhir['total'])->toIso8601String() : null,
-                'laki' => $terakhir['laki'] ? Carbon::parse($terakhir['laki'])->toIso8601String() : null,
-                'perempuan' => $terakhir['perempuan'] ? Carbon::parse($terakhir['perempuan'])->toIso8601String() : null,
-                'prodi' => $perProdi->max('created_at')?->toIso8601String(),
-            ],
+            'sebelum' => array_map(fn (array $kategori) => $kategori['sebelum'], $tren),
+            'terakhir' => array_map(fn (array $kategori) => $kategori['waktu'], $tren),
             'perProdi' => $perProdi->map(fn (Prodi $prodi) => [
                 'id' => $prodi->id,
                 'label' => $prodi->label(),

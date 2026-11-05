@@ -70,25 +70,37 @@ class DashboardTest extends TestCase
         $tren = function (string $kunci) use ($stats): float {
             $s = $stats->get();
 
-            return DashboardStats::perubahan($s[$kunci === 'total' ? 'total' : $kunci], $s['sebelum'][$kunci]);
+            return DashboardStats::perubahan($s[$kunci], $s['sebelum'][$kunci]);
         };
+        $this->assertSame(0.0, $tren('total')); // catatan pertama: belum ada perubahan
 
-        $this->travel(1)->minutes();
-        $baru = Mahasiswa::factory()->for($prodi)->perempuan()->create();
+        // Data bertanggal lama (mis. hasil seeder/impor) tetap dihitung sebagai penambahan.
+        Mahasiswa::factory()->for($prodi)->perempuan()->create(['created_at' => now()->subYears(3)]);
         $this->assertSame(1.0, $tren('total'));          // 99 -> 100
         $this->assertSame(2.0, $tren('perempuan'));      // 49 -> 50
-        $this->assertSame(100.0, $tren('laki'));          // perubahan terakhir laki-laki: 0 -> 50 (seeding)
+        $this->assertSame(0.0, $tren('laki'));           // tidak berubah
 
-        $this->travel(1)->minutes();
-        $baru->delete();
+        Mahasiswa::where('jenis_kelamin', 'Perempuan')->first()->delete();
         $this->assertSame(-1.0, $tren('total'));         // 100 -> 99
         $this->assertSame(-2.0, $tren('perempuan'));     // 50 -> 49
 
-        $this->travel(1)->minutes();
         Mahasiswa::where('jenis_kelamin', 'Laki-laki')->first()->delete();
         $this->assertSame(-1.0, round($tren('total'), 0)); // 99 -> 98
         $this->assertSame(-2.0, $tren('laki'));          // 50 -> 49
-        $this->assertSame(-2.0, $tren('perempuan'));     // tidak berubah sejak hapus terakhir
+        $this->assertSame(-2.0, $tren('perempuan'));     // tetap: perubahan terakhirnya hapus 1
+    }
+
+    public function test_bulk_action_counts_as_one_change(): void
+    {
+        $mahasiswas = Mahasiswa::factory()->count(10)->create();
+        $user = User::factory()->create();
+        $this->actingAs($user)->get(route('dashboard'));
+
+        $this->actingAs($user)->post(route('mahasiswa.bulk'), ['aksi' => 'hapus', 'ids' => $mahasiswas->take(3)->modelKeys()]);
+
+        $this->actingAs($user)->get(route('dashboard'))
+            ->assertViewHas('selisih', fn (array $selisih) => $selisih['total'] === -3)
+            ->assertViewHas('tren', fn (array $tren) => $tren['total'] === -30.0);
     }
 
     public function test_deleted_nim_can_be_registered_again(): void

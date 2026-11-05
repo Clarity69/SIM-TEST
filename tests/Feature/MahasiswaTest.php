@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
+use function Illuminate\Support\defer;
+
 class MahasiswaTest extends TestCase
 {
     use RefreshDatabase;
@@ -103,6 +105,7 @@ class MahasiswaTest extends TestCase
         $hitung = function () use ($user): int {
             Cache::flush(); // bandingkan dua request tanpa cache (cold)
             ActivityLog::simpanAntrean(); // log dari factory di luar request tidak ikut dihitung
+            defer()->invoke();
             DB::flushQueryLog();
             DB::enableQueryLog();
             $this->actingAs($user)->get(route('mahasiswa.index'))->assertOk();
@@ -269,6 +272,7 @@ class MahasiswaTest extends TestCase
         Mahasiswa::factory()->count(12)->create();
 
         $this->actingAs($user);
+        defer()->invoke(); // hitung ulang statistik dari factory di atas tidak ikut diukur
         DB::flushQueryLog();
         DB::enableQueryLog();
         $response = $this->get(route('mahasiswa.index', ['page' => 2]), ['X-Requested-With' => 'XMLHttpRequest']);
