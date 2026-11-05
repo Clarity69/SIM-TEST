@@ -78,7 +78,7 @@
             x-bind:title="$store.sidebar.collapsed ? 'Tampilkan menu lengkap' : null">
             <x-icon name="panel-left-close" x-show="! $store.sidebar.collapsed" />
             <x-icon name="panel-left-open" x-show="$store.sidebar.collapsed" x-cloak />
-            <span x-show="! $store.sidebar.collapsed">Tampilkan ikon saja</span>
+            <span x-show="! $store.sidebar.collapsed">Sembunyikan Sidebar</span>
             <span class="sr-only" x-show="$store.sidebar.collapsed">Tampilkan menu lengkap</span>
         </button>
     </aside>
@@ -93,6 +93,15 @@
             </button>
 
             <x-breadcrumb :items="$breadcrumbs" class="flex-1" />
+
+            <button type="button" x-on:click="$dispatch('open-command-palette')"
+                class="flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-2.5 text-sm text-slate-500 hover:bg-slate-50 hover:text-slate-700 sm:w-56 lg:w-64 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                aria-keyshortcuts="Control+K Meta+K /">
+                <x-icon name="search" class="size-[18px]" />
+                <span class="hidden flex-1 text-left sm:block">Cari atau jalankan…</span>
+                <span class="sr-only sm:hidden">Cari atau jalankan perintah</span>
+                <kbd class="kbd hidden sm:inline-flex">Ctrl K</kbd>
+            </button>
 
             <button type="button" class="grid size-9 place-items-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 x-on:click="$store.theme.toggle()" x-bind:aria-pressed="$store.theme.dark.toString()">
@@ -127,7 +136,7 @@
                         <x-icon name="key-round" class="size-4 text-slate-400" /> Ganti Password
                     </button>
                     <div class="my-1 border-t border-slate-100 dark:border-slate-700"></div>
-                    <form method="POST" action="{{ route('logout') }}">
+                    <form method="POST" action="{{ route('logout') }}" id="logout-form">
                         @csrf
                         <button type="submit" class="flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-red-700 hover:bg-red-50 focus:bg-red-50 dark:text-red-300 dark:hover:bg-red-500/10 dark:focus:bg-red-500/10">
                             <x-icon name="log-out" class="size-4" /> Keluar
@@ -154,6 +163,7 @@
     <x-flash />
     <x-modal-confirm />
     <x-account-modals />
+    <x-command-palette />
     @stack('scripts')
 </body>
 </html>

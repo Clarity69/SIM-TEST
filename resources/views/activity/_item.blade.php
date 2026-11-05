@@ -29,8 +29,8 @@
     $url = $log->subjectUrl();
 @endphp
 
-<li class="relative flex gap-4 pb-6 last:pb-0">
-    <span class="absolute left-[17px] top-10 -bottom-0 w-px bg-slate-200 last:hidden dark:bg-slate-800" aria-hidden="true"></span>
+<li class="group relative flex gap-4 pb-6 last:pb-0">
+    <span class="absolute bottom-0 left-[17px] top-10 w-px bg-slate-200 group-last:hidden dark:bg-slate-800" aria-hidden="true"></span>
     <span class="relative grid size-9 shrink-0 place-items-center rounded-full ring-1 {{ $warnaIkon }}" aria-hidden="true">
         <x-icon :name="$ikon" class="size-4" />
     </span>

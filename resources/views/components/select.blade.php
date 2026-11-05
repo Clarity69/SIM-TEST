@@ -6,7 +6,7 @@
     $selected = (string) old($name, $value);
 @endphp
 
-<div {{ $attributes->only('class')->merge(['class' => 'space-y-1.5']) }}>
+<div {{ $attributes->only('class')->merge(['class' => $srOnlyLabel ? '' : 'space-y-1.5']) }}>
     <label for="{{ $id }}" @class(['block text-sm font-medium text-slate-700 dark:text-slate-200', 'sr-only' => $srOnlyLabel])>
         {{ $label }} @if ($required)<span class="text-red-600" aria-hidden="true">*</span>@endif
     </label>

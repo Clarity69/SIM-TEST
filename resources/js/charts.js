@@ -22,6 +22,12 @@ const palette = () => {
         primarySoft: dark ? 'rgba(89, 178, 242, 0.55)' : 'rgba(18, 145, 236, 0.55)',
         secondary: '#fe6500',
         surface: dark ? '#0f172a' : '#ffffff',
+        status: {
+            Aktif: dark ? '#34d399' : '#10b981',
+            Cuti: dark ? '#fbbf24' : '#f59e0b',
+            Lulus: dark ? '#59b2f2' : '#1079c7',
+            Keluar: dark ? '#64748b' : '#94a3b8',
+        },
     };
 };
 
@@ -55,6 +61,38 @@ const configs = {
         };
     },
 
+    // Batang bertumpuk: satu dataset per status (warna mengikuti tema).
+    stacked({ labels, datasets }, c) {
+        return {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: datasets.map(({ status, values }) => ({
+                    label: status,
+                    data: values,
+                    backgroundColor: c.status[status] ?? c.primary,
+                    borderColor: c.surface,
+                    borderWidth: { top: 2 },
+                    borderSkipped: 'bottom',
+                    borderRadius: 4,
+                    maxBarThickness: 48,
+                })),
+            },
+            options: {
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { title: (items) => `Angkatan ${items[0].label}` } },
+                },
+                scales: {
+                    x: { stacked: true, grid: { display: false }, ticks: { color: c.text } },
+                    y: { stacked: true, beginAtZero: true, ticks: { color: c.text, precision: 0 }, grid: { color: c.grid }, border: { display: false } },
+                },
+            },
+        };
+    },
+
     doughnut({ labels, values }, c) {
         return {
             type: 'doughnut',
@@ -71,19 +109,22 @@ const configs = {
     },
 };
 
-export default function initCharts() {
-    const charts = [];
-    const render = () => {
-        charts.splice(0).forEach((chart) => chart.destroy());
-        const c = palette();
-        Chart.defaults.font.family = '"Plus Jakarta Sans Variable", system-ui, sans-serif';
+const draw = (canvas, c) => {
+    Chart.getChart(canvas)?.destroy();
+    const { type, ...data } = JSON.parse(canvas.dataset.chart);
+    new Chart(canvas, configs[type](data, c));
+};
 
-        document.querySelectorAll('[data-chart]').forEach((canvas) => {
-            const { type, ...data } = JSON.parse(canvas.dataset.chart);
-            charts.push(new Chart(canvas, configs[type](data, c)));
-        });
+export default function initCharts() {
+    Chart.defaults.font.family = '"Plus Jakarta Sans Variable", system-ui, sans-serif';
+    const render = () => {
+        const c = palette();
+        document.querySelectorAll('[data-chart]').forEach((canvas) => draw(canvas, c));
     };
 
     render();
     window.addEventListener('theme-changed', render);
+
+    // Grafik yang datanya diganti di sisi klien (mis. filter rentang angkatan).
+    document.addEventListener('chart:update', (event) => draw(event.target, palette()));
 }

@@ -35,6 +35,7 @@ class DashboardController extends Controller
             'terakhir' => $stats['terakhir'],
             'mahasiswaTerbaru' => collect($stats['terbaru']),
             'mahasiswaPerProdi' => collect($stats['perProdi']),
+            'perAngkatan' => $stats['perAngkatan'],
         ]);
     }
 }

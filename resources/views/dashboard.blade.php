@@ -7,6 +7,18 @@
             'values' => $mahasiswaPerProdi->pluck('mahasiswas_count'),
         ];
         $grafikGender = ['type' => 'doughnut', 'labels' => ['Laki-laki', 'Perempuan'], 'values' => [$totalLakiLaki, $totalPerempuan]];
+
+        $daftarStatus = array_keys(\App\Models\Mahasiswa::STATUS);
+        $tahunAngkatan = collect($perAngkatan)->pluck('angkatan')->unique()->sort()->values();
+        $grafikAngkatan = [
+            'type' => 'stacked',
+            'labels' => $tahunAngkatan,
+            'datasets' => collect($daftarStatus)->map(fn ($status) => [
+                'status' => $status,
+                'values' => $tahunAngkatan->map(fn ($tahun) => (int) collect($perAngkatan)->where('angkatan', $tahun)->where('status', $status)->sum('jumlah')),
+            ]),
+        ];
+        $warnaStatus = ['Aktif' => 'bg-emerald-500 dark:bg-emerald-400', 'Cuti' => 'bg-amber-500 dark:bg-amber-400', 'Lulus' => 'bg-primary-600 dark:bg-primary-400', 'Keluar' => 'bg-slate-400 dark:bg-slate-500'];
     @endphp
     <x-page-header title="Dashboard" description="Ringkasan data akademik {{ config('stitek.singkatan') }} · persentase dibanding data sebelum perubahan terakhir">
         <x-button variant="secondary" icon="printer" :href="route('mahasiswa.pdf')" target="_blank">Cetak PDF</x-button>
@@ -63,6 +75,72 @@
             @endif
         </x-card>
     </div>
+
+    <x-card title="Mahasiswa per Angkatan & Status" description="Sebaran status akademik setiap angkatan; pilih rentang angkatan untuk mempersempit"
+        x-data="angkatanChart({{ \Illuminate\Support\Js::from(['rows' => $perAngkatan, 'statuses' => $daftarStatus]) }})">
+        @if ($tahunAngkatan->isEmpty())
+            <x-empty-state icon="chart-column" title="Belum ada data angkatan" description="Isi kolom angkatan pada data mahasiswa untuk menampilkan grafik ini." />
+        @else
+            <x-slot:actions>
+                <div class="flex flex-wrap items-center gap-2">
+                    @if ($tahunAngkatan->count() > 4)
+                        <div class="flex rounded-xl border border-slate-200 p-0.5 text-xs font-medium dark:border-slate-700" role="group" aria-label="Rentang cepat">
+                            @foreach ([4 => '4 terakhir', 0 => 'Semua'] as $jumlah => $label)
+                                <button type="button" class="rounded-lg px-2.5 py-1"
+                                    x-on:click="preset({{ $jumlah ?: 'years.length' }})"
+                                    x-bind:class="isPreset({{ $jumlah ?: 'years.length' }}) ? 'bg-primary-600 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'"
+                                    x-bind:aria-pressed="isPreset({{ $jumlah ?: 'years.length' }}).toString()">{{ $label }}</button>
+                            @endforeach
+                        </div>
+                    @endif
+                    <div class="flex items-center gap-1.5 text-sm">
+                        <x-icon name="calendar-range" class="size-4 text-slate-400" />
+                        <label for="angkatan-dari" class="sr-only">Dari angkatan</label>
+                        <select id="angkatan-dari" x-model.number="dari" class="form-control w-auto py-1.5 pr-8 text-sm">
+                            @foreach ($tahunAngkatan as $tahun)
+                                <option value="{{ $tahun }}">{{ $tahun }}</option>
+                            @endforeach
+                        </select>
+                        <span class="text-slate-400" aria-hidden="true">–</span>
+                        <label for="angkatan-sampai" class="sr-only">Sampai angkatan</label>
+                        <select id="angkatan-sampai" x-model.number="sampai" class="form-control w-auto py-1.5 pr-8 text-sm">
+                            @foreach ($tahunAngkatan as $tahun)
+                                <option value="{{ $tahun }}" @selected($loop->last)>{{ $tahun }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </x-slot:actions>
+
+            <div class="grid gap-6 lg:grid-cols-[1fr_16rem]">
+                <div class="h-72">
+                    <canvas x-ref="canvas" role="img" aria-label="Grafik batang bertumpuk jumlah mahasiswa per angkatan menurut status"
+                        data-chart="{{ json_encode($grafikAngkatan) }}"></canvas>
+                </div>
+                <div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">
+                        <span class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white" x-text="total">{{ collect($perAngkatan)->sum('jumlah') }}</span>
+                        mahasiswa · angkatan <span x-text="dari === sampai ? dari : dari + '–' + sampai">{{ $tahunAngkatan->first() }}–{{ $tahunAngkatan->last() }}</span>
+                    </p>
+                    <ul class="mt-4 space-y-3.5" aria-live="polite">
+                        @foreach ($daftarStatus as $status)
+                            <li>
+                                <div class="flex items-center gap-2 text-sm">
+                                    <span class="size-2.5 rounded-sm {{ $warnaStatus[$status] }}" aria-hidden="true"></span>
+                                    <span class="flex-1 text-slate-600 dark:text-slate-300">{{ $status }}</span>
+                                    <span class="font-semibold tabular-nums text-slate-900 dark:text-white" x-text="jumlah(@js($status))"></span>
+                                    <span class="w-12 text-right text-xs tabular-nums text-slate-500 dark:text-slate-400" x-text="persen(@js($status)).toFixed(1).replace('.', ',') + '%'"></span>
+                                </div>
+                                <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" aria-hidden="true">
+                                    <div class="h-full rounded-full transition-[width] duration-500 {{ $warnaStatus[$status] }}" x-bind:style="{ width: persen(@js($status)) + '%' }"></div>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+        @endif
+    </x-card>
 
     <x-card title="Rekapitulasi Program Studi" description="Jumlah dan komposisi mahasiswa di setiap program studi">
         <x-slot:actions>

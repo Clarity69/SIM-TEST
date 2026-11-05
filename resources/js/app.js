@@ -1,6 +1,8 @@
 import '@fontsource-variable/plus-jakarta-sans';
 import Alpine from 'alpinejs';
 import focus from '@alpinejs/focus';
+import angkatanChart from './angkatan-chart';
+import commandPalette from './command-palette';
 import liveTable from './live-table';
 
 const storage = {
@@ -86,6 +88,8 @@ document.addEventListener('alpine:init', () => {
     });
 
     Alpine.data('liveTable', liveTable);
+    Alpine.data('commandPalette', commandPalette);
+    Alpine.data('angkatanChart', angkatanChart);
 });
 
 window.Alpine = Alpine;

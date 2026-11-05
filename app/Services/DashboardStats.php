@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Cache;
  */
 class DashboardStats
 {
-    public const CACHE_KEY = 'dashboard.stats';
+    public const CACHE_KEY = 'dashboard.stats.v2';
 
     public const TTL_SECONDS = 300;
 
@@ -26,7 +26,8 @@ class DashboardStats
      *     sebelum: array{total: int, laki: int, perempuan: int, prodi: int},
      *     terakhir: array{total: ?string, laki: ?string, perempuan: ?string, prodi: ?string},
      *     perProdi: list<array{id: int, label: string, nama_prodi: string, kaprodi: ?string, mahasiswas_count: int, laki_count: int, perempuan_count: int}>,
-     *     terbaru: list<array{id: int, nim: string, nama: string, jenis_kelamin: string, prodi: string, created_at: string}>
+     *     terbaru: list<array{id: int, nim: string, nama: string, jenis_kelamin: string, prodi: string, created_at: string}>,
+     *     perAngkatan: list<array{angkatan: int, status: string, jumlah: int}>
      * }
      */
     public function get(): array
@@ -48,6 +49,7 @@ class DashboardStats
      * Query 2: jumlah sekarang dan jumlah sebelum perubahan terakhir, satu agregat.
      * Query 3: jumlah mahasiswa per prodi (withCount), sekaligus total prodi.
      * Query 4 + 5: 5 mahasiswa terbaru beserta prodinya (eager load).
+     * Query 6: jumlah per angkatan × status (GROUP BY) untuk grafik dengan filter rentang angkatan.
      */
     private function compute(): array
     {
@@ -99,6 +101,15 @@ class DashboardStats
             ->limit(5)
             ->get();
 
+        $perAngkatan = Mahasiswa::query()
+            ->toBase()
+            ->whereNotNull('angkatan')
+            ->select('angkatan', 'status')
+            ->selectRaw('COUNT(*) AS jumlah')
+            ->groupBy('angkatan', 'status')
+            ->orderBy('angkatan')
+            ->get();
+
         return [
             'total' => (int) $agregat->total,
             'laki' => (int) $agregat->laki,
@@ -133,6 +144,11 @@ class DashboardStats
                 'jenis_kelamin' => $mahasiswa->jenis_kelamin,
                 'prodi' => $mahasiswa->prodi->nama_prodi,
                 'created_at' => $mahasiswa->created_at->toIso8601String(),
+            ])->all(),
+            'perAngkatan' => $perAngkatan->map(fn ($row) => [
+                'angkatan' => (int) $row->angkatan,
+                'status' => $row->status,
+                'jumlah' => (int) $row->jumlah,
             ])->all(),
         ];
     }

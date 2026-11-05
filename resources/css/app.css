@@ -26,6 +26,10 @@
 }
 
 @layer components {
+    .kbd {
+        @apply inline-flex min-w-5 items-center justify-center rounded-md border border-slate-200 bg-white px-1 py-px font-sans text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400;
+    }
+
     .card {
         @apply rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900;
     }

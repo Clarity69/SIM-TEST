@@ -8,6 +8,7 @@ use App\Http\Controllers\MahasiswaExportController;
 use App\Http\Controllers\MahasiswaImportController;
 use App\Http\Controllers\ProdiController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +35,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Pencarian global palet perintah (Ctrl+K)
+    Route::get('/cari', SearchController::class)->middleware('throttle:120,1')->name('search');
 
     // Cetak & kirim PDF (wajib diletakkan SEBELUM resource route)
     Route::get('/mahasiswa/pdf', [MahasiswaController::class, 'pdf'])->name('mahasiswa.pdf');

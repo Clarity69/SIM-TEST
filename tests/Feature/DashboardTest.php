@@ -124,4 +124,22 @@ class DashboardTest extends TestCase
             ->assertSee('Kaprodi: Rianindya Chandra Hardika, S.T., M.Eng')
             ->assertSee('Teknik Industri: 0 dari 4 mahasiswa', false);
     }
+
+    public function test_dashboard_groups_mahasiswa_per_angkatan_and_status(): void
+    {
+        Mahasiswa::factory()->count(2)->create(['angkatan' => 2023, 'status' => 'Aktif']);
+        Mahasiswa::factory()->create(['angkatan' => 2023, 'status' => 'Cuti']);
+        Mahasiswa::factory()->create(['angkatan' => 2024, 'status' => 'Aktif']);
+        Mahasiswa::factory()->create(['angkatan' => 2024, 'status' => 'Aktif'])->delete();
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Mahasiswa per Angkatan &amp; Status', false)
+            ->assertViewHas('perAngkatan', [
+                ['angkatan' => 2023, 'status' => 'Aktif', 'jumlah' => 2],
+                ['angkatan' => 2023, 'status' => 'Cuti', 'jumlah' => 1],
+                ['angkatan' => 2024, 'status' => 'Aktif', 'jumlah' => 1],
+            ]);
+    }
 }
