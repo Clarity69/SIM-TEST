@@ -1,6 +1,6 @@
 <x-app-layout title="Data Mahasiswa" :breadcrumbs="['Data Mahasiswa' => null]">
     <div x-data="liveTable(350)" class="space-y-6">
-        <x-page-header title="Data Mahasiswa" description="Cari, saring, dan kelola data mahasiswa {{ config('stitek.singkatan') }}.">
+        <x-page-header title="Data Mahasiswa" eyebrow="Administrasi akademik" description="Temukan mahasiswa, perbarui data, dan siapkan laporan dalam satu tempat.">
             <x-button variant="secondary" icon="upload" :href="route('mahasiswa.import')">Impor</x-button>
 
             <x-dropdown align="right" width="w-60" content-classes="py-1 bg-white dark:bg-slate-800">
@@ -31,45 +31,61 @@
                 </x-slot>
             </x-dropdown>
 
-            <x-button icon="plus" :href="route('mahasiswa.create')">Tambah Mahasiswa</x-button>
+            <x-button icon="plus" :href="route('mahasiswa.create')" class="order-first w-full sm:order-none sm:w-auto">Tambah Mahasiswa</x-button>
         </x-page-header>
 
-        <section class="card" aria-label="Tabel data mahasiswa">
+        <section class="card scroll-mt-24" aria-label="Tabel data mahasiswa">
             <form x-ref="form" method="GET" action="{{ route('mahasiswa.index') }}" role="search"
-                class="flex flex-col gap-3 border-b border-slate-200 p-4 sm:p-5 lg:flex-row lg:flex-wrap lg:items-end dark:border-slate-800"
+                class="space-y-4 border-b border-slate-200 p-4 sm:p-5 dark:border-slate-800"
                 x-on:submit.prevent="submit()">
                 <input type="hidden" name="sort" value="{{ request('sort') }}">
                 <input type="hidden" name="direction" value="{{ request('direction') }}">
 
-                <div class="relative flex-1 lg:min-w-56">
-                    <label for="search" class="sr-only">Cari NIM atau nama</label>
-                    {{-- Posisi diatur span pembungkus; animate-spin memakai transform sendiri
-                         sehingga tidak boleh digabung dengan -translate-y-1/2 di elemen yang sama. --}}
-                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400" aria-hidden="true">
-                        <x-icon name="search" class="size-4" x-show="! loading" />
-                        <x-icon name="loader-circle" class="size-4 animate-spin text-primary-600" x-show="loading" x-cloak />
-                    </span>
-                    <input id="search" name="search" type="search" value="{{ request('search') }}" placeholder="Cari NIM atau nama…"
-                        class="form-control pl-9" autocomplete="off" x-on:input="queue()">
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="relative min-w-0 flex-1 basis-48">
+                        <label for="search" class="sr-only">Cari NIM atau nama</label>
+                        {{-- Posisi diatur span pembungkus; animate-spin memakai transform sendiri
+                             sehingga tidak boleh digabung dengan -translate-y-1/2 di elemen yang sama. --}}
+                        <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400" aria-hidden="true">
+                            <x-icon name="search" class="size-4" x-show="! loading" />
+                            <x-icon name="loader-circle" class="size-4 animate-spin text-primary-600" x-show="loading" x-cloak />
+                        </span>
+                        <input id="search" name="search" type="search" value="{{ request('search') }}" placeholder="Cari NIM atau nama…"
+                            class="form-control pl-10" autocomplete="off" x-on:input="queue()">
+                    </div>
+
+                    <x-button variant="secondary" icon="list-filter" x-on:click="filtersOpen = ! filtersOpen" x-bind:aria-expanded="filtersOpen.toString()" aria-controls="student-filters" x-cloak>
+                        Filter
+                        <span x-show="activeFilters.some(filter => filter.key !== 'search')" x-text="activeFilters.filter(filter => filter.key !== 'search').length" class="grid size-5 place-items-center rounded-md bg-primary-50 text-[11px] text-primary-700 dark:bg-primary-500/15 dark:text-primary-300"></span>
+                        <x-icon name="chevron-down" class="size-3.5 transition-transform" x-bind:class="filtersOpen ? 'rotate-180' : ''" />
+                    </x-button>
+                    <noscript><x-button type="submit" icon="search">Cari</x-button></noscript>
                 </div>
 
-                <x-select name="prodi_id" label="Program studi" :sr-only-label="true" class="lg:w-48" placeholder="Semua program studi"
-                    :options="$prodis->pluck('nama_prodi', 'id')" :value="request('prodi_id')" x-on:change="submit()" />
+                <div id="student-filters" x-show="filtersOpen" class="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 xl:grid-cols-4 dark:border-slate-800">
+                    <x-select name="prodi_id" label="Program studi" placeholder="Semua program studi"
+                        :options="$prodis->pluck('nama_prodi', 'id')" :value="request('prodi_id')" x-on:change="submit()" />
 
-                <x-select name="jenis_kelamin" label="Jenis kelamin" :sr-only-label="true" class="lg:w-40" placeholder="Semua gender"
-                    :options="array_combine(\App\Models\Mahasiswa::JENIS_KELAMIN, \App\Models\Mahasiswa::JENIS_KELAMIN)" :value="request('jenis_kelamin')" x-on:change="submit()" />
+                    <x-select name="jenis_kelamin" label="Jenis kelamin" placeholder="Semua gender"
+                        :options="array_combine(\App\Models\Mahasiswa::JENIS_KELAMIN, \App\Models\Mahasiswa::JENIS_KELAMIN)" :value="request('jenis_kelamin')" x-on:change="submit()" />
 
-                <x-select name="status" label="Status" :sr-only-label="true" class="lg:w-36" placeholder="Semua status"
-                    :options="array_combine(array_keys(\App\Models\Mahasiswa::STATUS), array_keys(\App\Models\Mahasiswa::STATUS))" :value="request('status')" x-on:change="submit()" />
+                    <x-select name="status" label="Status" placeholder="Semua status"
+                        :options="array_combine(array_keys(\App\Models\Mahasiswa::STATUS), array_keys(\App\Models\Mahasiswa::STATUS))" :value="request('status')" x-on:change="submit()" />
 
-                <x-select name="angkatan" label="Angkatan" :sr-only-label="true" class="lg:w-40" placeholder="Semua angkatan"
-                    :options="array_combine($angkatans, $angkatans)" :value="request('angkatan')" x-on:change="submit()" />
+                    <x-select name="angkatan" label="Angkatan" placeholder="Semua angkatan"
+                        :options="array_combine($angkatans, $angkatans)" :value="request('angkatan')" x-on:change="submit()" />
 
-                <div class="flex gap-2">
-                    <noscript><x-button type="submit" icon="search">Cari</x-button></noscript>
-                    <x-button variant="ghost" size="icon" class="size-10" :href="route('mahasiswa.index')" title="Reset filter">
-                        <x-icon name="refresh-cw" class="size-4" /><span class="sr-only">Reset filter</span>
-                    </x-button>
+                </div>
+
+                <div x-show="activeFilters.length" x-cloak class="flex flex-wrap items-center gap-2" aria-label="Filter aktif">
+                    <span class="mr-1 text-xs text-slate-500 dark:text-slate-400">Filter aktif</span>
+                    <template x-for="filter in activeFilters" :key="filter.key">
+                        <button type="button" x-on:click="removeFilter(filter.key)" x-bind:aria-label="'Hapus filter ' + filter.label + ': ' + filter.value"
+                            class="inline-flex min-h-9 max-w-full items-center gap-2 rounded-lg border border-primary-100 bg-primary-50 px-2.5 text-xs font-medium text-primary-800 hover:border-primary-300 dark:border-primary-500/20 dark:bg-primary-500/10 dark:text-primary-200">
+                            <span class="truncate" x-text="filter.label + ': ' + filter.value"></span><x-icon name="x" class="size-3.5 shrink-0" />
+                        </button>
+                    </template>
+                    <a href="{{ route('mahasiswa.index') }}" x-on:click.prevent="resetFilters()" class="inline-flex min-h-9 items-center px-2 text-xs font-semibold text-slate-600 underline underline-offset-4 hover:text-primary-700 dark:text-slate-300">Reset semua</a>
                 </div>
             </form>
 
@@ -80,7 +96,10 @@
                 @csrf
                 <input type="hidden" name="aksi" x-ref="aksi" value="status">
                 <template x-for="id in selected" :key="id"><input type="hidden" name="ids[]" :value="id"></template>
-                <p class="text-sm font-semibold text-primary-800 dark:text-primary-200"><span x-text="selected.length"></span> mahasiswa dipilih</p>
+                <div>
+                    <p class="text-sm font-semibold text-primary-800 dark:text-primary-200"><span x-text="selected.length"></span> mahasiswa dipilih</p>
+                    <p class="mt-0.5 text-xs text-primary-700 dark:text-primary-300">Pilihan tetap tersimpan saat berpindah halaman.</p>
+                </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <label for="bulk-status" class="sr-only">Status baru</label>
                     <select id="bulk-status" name="status" class="form-control h-8 w-32 py-0 text-xs">

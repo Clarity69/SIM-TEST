@@ -8,6 +8,7 @@ use App\Models\ActivityLog;
 use App\Models\User;
 use App\Notifications\MahasiswaBulkChanged;
 use App\Services\ImportMahasiswa;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -74,6 +75,17 @@ class MahasiswaImportController extends Controller
 
     public function store(Request $request, string $token, ImportMahasiswa $import): RedirectResponse
     {
+        $this->sesi($request, $token);
+
+        $response = Cache::lock($this->kunci($token).'.lock', 300)->get(function () use ($request, $token, $import) {
+            return $this->confirm($request, $token, $import);
+        });
+
+        return $response ?: back()->with('error', 'Impor sedang diproses. Tunggu sampai selesai sebelum mencoba lagi.');
+    }
+
+    private function confirm(Request $request, string $token, ImportMahasiswa $import): RedirectResponse
+    {
         $sesi = $this->sesi($request, $token);
 
         if ($sesi['hasil'] !== null) {
@@ -84,7 +96,13 @@ class MahasiswaImportController extends Controller
             return back()->with('error', 'Tidak ada baris valid untuk diimpor.');
         }
 
-        $hasil = $import->simpan($sesi['valid']);
+        try {
+            $hasil = $import->simpan($sesi['valid']);
+        } catch (QueryException $exception) {
+            report($exception);
+
+            return back()->with('error', 'Data berubah sejak pratinjau. Unggah ulang file untuk memvalidasi kembali program studi dan NIM.');
+        }
         $sesi['hasil'] = $hasil;
         Cache::put($this->kunci($token), $sesi, self::TTL);
 
@@ -117,7 +135,7 @@ class MahasiswaImportController extends Controller
             ];
         }
 
-        return Excel::download(new SheetArrayExport('baris-bermasalah', $rows), 'baris-bermasalah-impor.csv', ExcelFormat::CSV);
+        return Excel::download(new SheetArrayExport('baris-bermasalah', $rows, csv: true), 'baris-bermasalah-impor.csv', ExcelFormat::CSV);
     }
 
     /**

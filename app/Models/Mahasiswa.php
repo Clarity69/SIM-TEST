@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class Mahasiswa extends Model
 {
@@ -89,9 +90,17 @@ class Mahasiswa extends Model
      */
     protected static function booted(): void
     {
-        $berubah = function () {
-            DashboardStats::forget();
-            self::bumpVersiDaftar();
+        $berubah = function (): void {
+            $invalidate = static function (): void {
+                DashboardStats::forget();
+                self::bumpVersiDaftar();
+            };
+
+            if (DB::transactionLevel() > 0) {
+                DB::afterCommit($invalidate);
+            } else {
+                $invalidate();
+            }
         };
 
         static::saved($berubah);

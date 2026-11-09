@@ -7,6 +7,7 @@ use App\Models\Mahasiswa;
 use App\Models\Prodi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ActivityLogTest extends TestCase
@@ -83,6 +84,28 @@ class ActivityLogTest extends TestCase
         $this->assertDatabaseCount('activity_logs', 0);
     }
 
+    public function test_rolled_back_changes_do_not_leave_activity_entries(): void
+    {
+        $this->actingAs(User::factory()->create());
+        DB::beginTransaction();
+        Mahasiswa::factory()->create();
+
+        DB::rollBack();
+        ActivityLog::simpanAntrean();
+
+        $this->assertDatabaseCount('activity_logs', 0);
+        $this->assertDatabaseCount('mahasiswas', 0);
+    }
+
+    public function test_logout_activity_survives_account_deletion_with_actor_name(): void
+    {
+        $user = User::factory()->create(['name' => 'Operator Dihapus']);
+
+        $this->actingAs($user)->delete(route('profile.destroy'), ['password' => 'password'])->assertRedirect('/');
+
+        $this->assertDatabaseHas('activity_logs', ['event' => 'logout', 'user_id' => null, 'user_name' => 'Operator Dihapus']);
+    }
+
     public function test_login_is_logged(): void
     {
         $user = User::factory()->create();
@@ -122,5 +145,30 @@ class ActivityLogTest extends TestCase
             ->assertOk()
             ->assertSee('Riwayat Aktivitas')
             ->assertSee('Mengubah data mahasiswa');
+    }
+
+    public function test_log_page_renders_account_creation_with_a_scalar_role(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin)->post(route('users.store'), [
+            'name' => 'Operator Baru', 'email' => 'operator-baru@example.test', 'role' => User::ROLE_OPERATOR,
+            'password' => 'PasswordAman123!', 'password_confirmation' => 'PasswordAman123!',
+        ])->assertRedirect(route('users.index'));
+
+        $this->get(route('activity.index'))->assertOk()
+            ->assertSee('Menambahkan akun Operator Baru')->assertSee('Role akun:')->assertSee('Operator');
+
+        $this->assertSame(User::ROLE_OPERATOR, ActivityLog::query()->where('event', 'account')->sole()->properties['role']);
+    }
+
+    public function test_log_page_still_renders_old_and_new_role_values(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $operator = User::factory()->create();
+        $this->actingAs($admin)->patch(route('users.role', $operator), ['role' => User::ROLE_ADMIN])->assertRedirect();
+
+        $this->get(route('activity.index'))->assertOk()->assertSee('Role')->assertSee('Operator')->assertSee('Admin');
+
+        $this->assertSame([User::ROLE_OPERATOR, User::ROLE_ADMIN], ActivityLog::query()->where('event', 'account')->sole()->properties['role']);
     }
 }

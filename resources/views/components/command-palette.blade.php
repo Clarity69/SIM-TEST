@@ -4,6 +4,8 @@
     $perintah = [
         ['group' => 'Navigasi', 'title' => 'Dashboard', 'icon' => 'layout-dashboard', 'url' => route('dashboard'), 'keywords' => 'beranda statistik'],
         ['group' => 'Navigasi', 'title' => 'Data Mahasiswa', 'icon' => 'users', 'url' => route('mahasiswa.index'), 'keywords' => 'daftar mahasiswa'],
+        ['group' => 'Navigasi', 'title' => 'Dosen', 'icon' => 'user', 'url' => route('dosen.index'), 'keywords' => 'dosen pengajar aktif nidn'],
+        ['group' => 'Navigasi', 'title' => 'Mata Kuliah', 'icon' => 'file-text', 'url' => route('mata-kuliah.index'), 'keywords' => 'matkul kurikulum sks semester'],
         ['group' => 'Navigasi', 'title' => 'Program Studi', 'icon' => 'graduation-cap', 'url' => route('prodi.index'), 'keywords' => 'prodi jurusan kaprodi'],
         ['group' => 'Navigasi', 'title' => 'Profil Saya', 'icon' => 'user-round', 'url' => route('profile.edit'), 'keywords' => 'akun notifikasi'],
     ];

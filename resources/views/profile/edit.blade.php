@@ -1,8 +1,8 @@
 <x-app-layout title="Profil Saya" :breadcrumbs="['Profil Saya' => null]">
     <x-page-header title="Profil Saya" description="Kelola informasi akun, keamanan, dan notifikasi email." />
 
-    <div class="grid gap-6 lg:grid-cols-[13rem_1fr]">
-        <nav aria-label="Bagian profil" class="lg:sticky lg:top-24 lg:self-start">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-[13rem_minmax(0,1fr)]">
+        <nav aria-label="Bagian profil" class="min-w-0 lg:sticky lg:top-24 lg:self-start">
             <ul class="flex gap-1 overflow-x-auto lg:flex-col">
                 @foreach (['profil' => ['user', 'Informasi profil'], 'keamanan' => ['key-round', 'Keamanan'], 'notifikasi' => ['bell', 'Notifikasi'], 'hapus-akun' => ['triangle-alert', 'Zona bahaya']] as $anchor => [$ikon, $label])
                     <li>
@@ -14,7 +14,7 @@
             </ul>
         </nav>
 
-        <div class="space-y-6">
+        <div class="min-w-0 space-y-6">
             {{-- Informasi profil --}}
             <form id="profil" method="POST" action="{{ route('profile.update') }}" class="scroll-mt-24" x-data="{ submitting: false }" x-on:submit="submitting = true">
                 @csrf
@@ -74,7 +74,7 @@
                 x-data="{ aktif: @js((bool) $user->notify_mahasiswa_changes), submitting: false }" x-on:submit="submitting = true">
                 @csrf
                 @method('PATCH')
-                <x-card title="Notifikasi email" description="Email dikirim lewat antrean (queue) sehingga tidak memperlambat aplikasi.">
+                <x-card title="Notifikasi email" description="Pilih pemberitahuan perubahan data mahasiswa yang ingin Anda terima.">
                     <div class="flex items-start justify-between gap-6">
                         <div>
                             <p id="notif-label" class="text-sm font-medium text-slate-900 dark:text-white">Perubahan data mahasiswa</p>

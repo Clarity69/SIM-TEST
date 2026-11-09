@@ -13,7 +13,7 @@
             <x-select name="event" label="Jenis" sr-only-label placeholder="Semua jenis" :value="$filters['event']"
                 :options="collect(\App\Models\ActivityLog::EVENTS)->map(fn ($e) => $e[0])->all()" x-on:change="$refs.form.submit()" />
             <x-select name="subject_type" label="Data" sr-only-label placeholder="Semua data" :value="$filters['subject_type']"
-                :options="['mahasiswa' => 'Mahasiswa', 'prodi' => 'Program studi', 'pengguna' => 'Pengguna']" x-on:change="$refs.form.submit()" />
+                :options="['mahasiswa' => 'Mahasiswa', 'prodi' => 'Program studi', 'pengguna' => 'Pengguna', 'dosen' => 'Dosen', 'mata_kuliah' => 'Mata kuliah']" x-on:change="$refs.form.submit()" />
             <x-select name="user_id" label="Pengguna" sr-only-label placeholder="Semua pengguna" :value="$filters['user_id']"
                 :options="$users->all()" x-on:change="$refs.form.submit()" />
             <div class="flex gap-2">

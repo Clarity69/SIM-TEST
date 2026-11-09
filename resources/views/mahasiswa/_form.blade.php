@@ -5,12 +5,19 @@
     @csrf
     @if ($mahasiswa) @method('PUT') @endif
 
-    <x-card :padding="false">
+    <x-card :padding="false" :sticky-footer="true">
         <div class="px-5 py-6 sm:px-6">
             @if ($errors->any())
                 <div class="mb-6 flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200" role="alert">
                     <x-icon name="circle-alert" />
-                    <p>Periksa kembali {{ $errors->count() }} isian yang ditandai di bawah.</p>
+                    <div>
+                        <p class="font-semibold">Ada {{ $errors->count() }} isian yang perlu diperiksa.</p>
+                        <ul class="mt-2 list-inside list-disc space-y-1">
+                            @foreach ($errors->messages() as $field => $messages)
+                                <li><a href="#{{ $field }}" class="underline underline-offset-2">{{ $messages[0] }}</a></li>
+                            @endforeach
+                        </ul>
+                    </div>
                 </div>
             @endif
 
@@ -28,7 +35,7 @@
                         <div class="space-y-2">
                             <label class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus-within:ring-2 focus-within:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                                 <x-icon name="upload" class="size-4" /> <span x-text="preview ? 'Ganti foto' : 'Unggah foto'">Unggah foto</span>
-                                <input type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="sr-only" aria-describedby="foto-hint"
+                                <input id="foto" type="file" name="foto" accept="image/jpeg,image/png,image/webp" class="sr-only" aria-describedby="foto-hint"
                                     x-on:change="if ($event.target.files[0]) { preview = URL.createObjectURL($event.target.files[0]); hapus = false }">
                             </label>
                             @if ($mahasiswa?->foto)
@@ -67,6 +74,7 @@
         </div>
 
         <x-slot:footer>
+            <p class="mr-auto hidden items-center gap-1.5 text-xs text-slate-500 sm:flex dark:text-slate-400"><x-icon name="shield-check" class="size-4" />Periksa kembali sebelum menyimpan.</p>
             <x-button variant="secondary" :href="$mahasiswa ? route('mahasiswa.show', $mahasiswa) : route('mahasiswa.index')">Batal</x-button>
             <x-button type="submit" icon="save" :loading="true">{{ $mahasiswa ? 'Simpan perubahan' : 'Simpan mahasiswa' }}</x-button>
         </x-slot:footer>

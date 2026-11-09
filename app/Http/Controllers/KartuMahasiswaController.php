@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\Mahasiswa;
 use App\Services\KartuMahasiswa;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
 
@@ -24,8 +25,10 @@ class KartuMahasiswaController extends Controller
     /**
      * Dibuka dari QR kartu (signed URL, tanpa login). Hanya data kartu yang ditampilkan.
      */
-    public function verifikasi(int $mahasiswa): View
+    public function verifikasi(Request $request, int $mahasiswa): View
     {
+        abort_unless($request->filled('expires'), 403);
+
         $data = Mahasiswa::withTrashed()
             ->select('id', 'nim', 'nama', 'prodi_id', 'angkatan', 'status', 'foto', 'deleted_at')
             ->with('prodi:id,nama_prodi')

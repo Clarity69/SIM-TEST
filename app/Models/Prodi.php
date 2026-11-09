@@ -81,6 +81,16 @@ class Prodi extends Model
         return $this->hasMany(Mahasiswa::class);
     }
 
+    public function dosens(): HasMany
+    {
+        return $this->hasMany(Dosen::class);
+    }
+
+    public function mataKuliahs(): HasMany
+    {
+        return $this->hasMany(MataKuliah::class);
+    }
+
     /**
      * Label pendek untuk grafik/badge: singkatan bila ada, selain itu kode prodi.
      */

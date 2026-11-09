@@ -2,6 +2,7 @@ import '@fontsource-variable/plus-jakarta-sans';
 import Alpine from 'alpinejs';
 import focus from '@alpinejs/focus';
 import angkatanChart from './angkatan-chart';
+import academicCalendar from './academic-calendar';
 import commandPalette from './command-palette';
 import liveTable from './live-table';
 
@@ -38,6 +39,18 @@ document.addEventListener('alpine:init', () => {
     Alpine.store('sidebar', {
         collapsed: storage.get('sidebar-collapsed') === '1',
         mobileOpen: false,
+        isMobile: window.innerWidth < 1024,
+        init() {
+            const desktop = window.matchMedia('(min-width: 1024px)');
+            const sync = () => {
+                this.isMobile = !desktop.matches;
+                if (desktop.matches) {
+                    this.mobileOpen = false;
+                }
+            };
+            sync();
+            desktop.addEventListener('change', sync);
+        },
         toggleCollapse() {
             this.collapsed = !this.collapsed;
             storage.set('sidebar-collapsed', this.collapsed ? '1' : '0');
@@ -90,6 +103,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('liveTable', liveTable);
     Alpine.data('commandPalette', commandPalette);
     Alpine.data('angkatanChart', angkatanChart);
+    Alpine.data('academicCalendar', academicCalendar);
 });
 
 window.Alpine = Alpine;

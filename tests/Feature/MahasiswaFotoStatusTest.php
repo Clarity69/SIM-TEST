@@ -5,9 +5,12 @@ namespace Tests\Feature;
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
 use App\Models\User;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 
 class MahasiswaFotoStatusTest extends TestCase
@@ -113,5 +116,57 @@ class MahasiswaFotoStatusTest extends TestCase
 
         $this->assertSoftDeleted($mahasiswa);
         $this->assertSame($user->id, Mahasiswa::withTrashed()->find($mahasiswa->id)->deleted_by);
+    }
+
+    public function test_storage_failure_rejects_photo_without_creating_student(): void
+    {
+        $prodi = Prodi::factory()->create();
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('put')->once()->andReturn(false);
+        Storage::shouldReceive('disk')->with('public')->andReturn($disk);
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('mahasiswa.store'), $this->payload($prodi, ['foto' => UploadedFile::fake()->image('foto.jpg', 300, 300)]))
+            ->assertSessionHasErrors('foto');
+
+        $this->assertDatabaseCount('mahasiswas', 0);
+    }
+
+    public function test_failed_student_creation_cleans_up_new_photo(): void
+    {
+        Storage::fake('public');
+        $prodi = Prodi::factory()->create();
+        $version = Mahasiswa::versiDaftar();
+        Mahasiswa::created(function (Mahasiswa $mahasiswa): void {
+            throw new RuntimeException('Penyimpanan mahasiswa gagal.');
+        });
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('mahasiswa.store'), $this->payload($prodi, ['foto' => UploadedFile::fake()->image('foto.jpg', 300, 300)]))
+            ->assertServerError();
+
+        $this->assertDatabaseCount('mahasiswas', 0);
+        $this->assertDatabaseCount('activity_logs', 0);
+        $this->assertSame($version, Mahasiswa::versiDaftar());
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_failed_update_preserves_old_photo_and_removes_replacement(): void
+    {
+        Storage::fake('public');
+        $prodi = Prodi::factory()->create();
+        $student = Mahasiswa::factory()->for($prodi)->create();
+        Storage::disk('public')->put('foto-mahasiswa/old.webp', 'old photo');
+        $student->forceFill(['foto' => 'foto-mahasiswa/old.webp'])->save();
+        Mahasiswa::updating(function (Mahasiswa $mahasiswa): void {
+            throw new RuntimeException('Perubahan mahasiswa gagal.');
+        });
+
+        $this->actingAs(User::factory()->create())
+            ->put(route('mahasiswa.update', $student), $this->payload($prodi, ['nim' => $student->nim, 'foto' => UploadedFile::fake()->image('new.jpg', 300, 300)]))
+            ->assertServerError();
+
+        $this->assertSame('foto-mahasiswa/old.webp', $student->fresh()->foto);
+        $this->assertSame(['foto-mahasiswa/old.webp'], Storage::disk('public')->allFiles());
     }
 }

@@ -2,15 +2,18 @@
 
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DosenController;
 use App\Http\Controllers\KartuMahasiswaController;
 use App\Http\Controllers\MahasiswaController;
 use App\Http\Controllers\MahasiswaExportController;
 use App\Http\Controllers\MahasiswaImportController;
+use App\Http\Controllers\MataKuliahController;
 use App\Http\Controllers\ProdiController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\TrashController;
 use App\Http\Controllers\UserController;
+use App\Http\Middleware\EnsureAcademicTables;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -63,10 +66,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Resource CRUD Mahasiswa & Prodi
     Route::resource('mahasiswa', MahasiswaController::class);
     Route::resource('prodi', ProdiController::class);
+    Route::resource('dosen', DosenController::class)->only('index');
+    Route::resource('mata-kuliah', MataKuliahController::class)->only('index');
+    Route::middleware(EnsureAcademicTables::class)->group(function (): void {
+        Route::resource('dosen', DosenController::class)->except(['index', 'show']);
+        Route::resource('mata-kuliah', MataKuliahController::class)->except(['index', 'show']);
+    });
 
     // Khusus admin
     Route::middleware('can:admin')->group(function () {
         Route::get('/pengguna', [UserController::class, 'index'])->name('users.index');
+        Route::get('/pengguna/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('/pengguna', [UserController::class, 'store'])->name('users.store');
         Route::patch('/pengguna/{user}/role', [UserController::class, 'updateRole'])->name('users.role');
         Route::delete('/pengguna/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 

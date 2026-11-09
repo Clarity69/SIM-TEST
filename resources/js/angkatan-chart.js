@@ -9,6 +9,7 @@ export default ({ rows = [], statuses = [] } = {}) => ({
     years: [...new Set(rows.map((row) => row.angkatan))].sort((a, b) => a - b),
     dari: null,
     sampai: null,
+    renderQueued: false,
 
     init() {
         this.dari = this.years[0] ?? null;
@@ -63,11 +64,17 @@ export default ({ rows = [], statuses = [] } = {}) => ({
     },
 
     render() {
-        const canvas = this.$refs.canvas;
-
-        if (canvas) {
-            canvas.dataset.chart = this.chartData();
-            canvas.dispatchEvent(new CustomEvent('chart:update', { bubbles: true }));
+        if (this.renderQueued) {
+            return;
         }
+        this.renderQueued = true;
+        this.$nextTick(() => {
+            this.renderQueued = false;
+            const canvas = this.$refs.canvas;
+            if (canvas) {
+                canvas.dataset.chart = this.chartData();
+                canvas.dispatchEvent(new CustomEvent('chart:update', { bubbles: true }));
+            }
+        });
     },
 });

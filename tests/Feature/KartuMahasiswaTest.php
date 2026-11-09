@@ -6,6 +6,7 @@ use App\Models\Mahasiswa;
 use App\Models\User;
 use App\Services\KartuMahasiswa;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
 
 class KartuMahasiswaTest extends TestCase
@@ -64,5 +65,24 @@ class KartuMahasiswaTest extends TestCase
 
         $this->get($kartu->urlVerifikasi($lulus))->assertOk()->assertSee('Kartu tidak berlaku — status Lulus');
         $this->get($kartu->urlVerifikasi($dihapus))->assertOk()->assertSee('data sudah dihapus');
+    }
+
+    public function test_card_expires_at_end_of_printed_validity_month(): void
+    {
+        $this->travelTo(now()->setDate(2026, 11, 9)->startOfDay());
+        $mahasiswa = Mahasiswa::factory()->create(['status' => 'Aktif']);
+        $url = app(KartuMahasiswa::class)->urlVerifikasi($mahasiswa);
+
+        $this->travelTo(now()->setDate(2027, 11, 30)->endOfDay());
+        $this->get($url)->assertOk()->assertSee('Kartu valid');
+        $this->travelTo(now()->setDate(2027, 12, 1)->startOfDay());
+        $this->get($url)->assertForbidden();
+    }
+
+    public function test_legacy_signed_url_without_expiration_is_rejected(): void
+    {
+        $mahasiswa = Mahasiswa::factory()->create();
+
+        $this->get(URL::signedRoute('kartu.verifikasi', ['mahasiswa' => $mahasiswa->id]))->assertForbidden();
     }
 }

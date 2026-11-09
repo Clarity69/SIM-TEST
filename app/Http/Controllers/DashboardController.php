@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\AcademicStats;
 use App\Services\DashboardStats;
 use Illuminate\View\View;
 
@@ -11,7 +12,7 @@ class DashboardController extends Controller
      * Menampilkan statistik ringkasan dan data terbaru di Dashboard.
      * Angka dihitung oleh DashboardStats (query agregat + cache 5 menit).
      */
-    public function index(DashboardStats $dashboardStats): View
+    public function index(DashboardStats $dashboardStats, AcademicStats $academicStats): View
     {
         $stats = $dashboardStats->get();
 
@@ -20,6 +21,7 @@ class DashboardController extends Controller
             'totalLakiLaki' => $stats['laki'],
             'totalPerempuan' => $stats['perempuan'],
             'totalProdi' => $stats['totalProdi'],
+            ...$academicStats->get(),
             'tren' => [
                 'total' => DashboardStats::perubahan($stats['total'], $stats['sebelum']['total']),
                 'laki' => DashboardStats::perubahan($stats['laki'], $stats['sebelum']['laki']),

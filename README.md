@@ -91,10 +91,10 @@ Login → Dashboard → Data Mahasiswa (CRUD, pencarian, filter) → Program Stu
 - CRUD lengkap, termasuk foto (otomatis dipotong persegi dan dikompres ke WebP), angkatan, dan status (Aktif/Cuti/Lulus/Keluar).
 - Pencarian live NIM/nama, filter prodi/gender/status/angkatan, dan sorting per kolom.
 - **Aksi massal**: pilih beberapa baris, lalu ubah status, ekspor, cetak kartu, atau hapus.
-- **Impor Excel/CSV** dalam 3 langkah (unggah → pratinjau kesalahan per baris → hasil), dilengkapi template dan laporan baris yang gagal.
+- **Impor Excel/CSV** dalam 3 langkah (unggah → pratinjau kesalahan per baris → hasil), maksimal 2.000 baris pada sheet pertama, dilengkapi template dan laporan baris yang gagal. Konfirmasi dilindungi lock dan konflik NIM dilewati tanpa menimpa data.
 - **Ekspor Excel/CSV** yang mengikuti filter aktif.
-- **PDF** daftar mahasiswa (mengikuti filter, ditandatangani kaprodi atau Ketua STITEK) dan biodata per mahasiswa. Keduanya bisa dicetak atau dikirim ke email.
-- **Kartu mahasiswa** ukuran kartu ATM dengan QR. QR membuka halaman verifikasi publik bertanda tangan (signed URL) yang menampilkan status kartu. Cetak massal menghasilkan 10 kartu per lembar A4.
+- **PDF** daftar mahasiswa (mengikuti filter, ditandatangani kaprodi atau Ketua STITEK) dan biodata per mahasiswa. Keduanya bisa dicetak atau dikirim ke email. Daftar PDF dibatasi 2.000 mahasiswa; gunakan filter atau ekspor Excel/CSV untuk data lebih besar.
+- **Kartu mahasiswa** ukuran kartu ATM dengan QR. QR membuka halaman verifikasi publik bertanda tangan yang kedaluwarsa pada akhir bulan masa berlaku tercetak. Kartu lama dengan URL tanpa kedaluwarsa harus dicetak ulang. Cetak massal menghasilkan 10 kartu per lembar A4.
 - Riwayat aktivitas di halaman detail mahasiswa, termasuk nilai lama dan nilai baru setiap perubahan.
 
 **Program Studi**: CRUD beserta kaprodi (nama asli, jabatan, NIDN/NUPTK). Prodi yang masih punya mahasiswa tidak bisa dihapus.
@@ -175,7 +175,7 @@ MAIL_FROM_NAME="SIM Mahasiswa STITEK"
 ### 3. Migration, seeder, dan storage
 
 ```bash
-php artisan migrate --seed   # tabel + 6 prodi STITEK + 100 mahasiswa + akun admin
+php artisan migrate --seed   # data demo dan admin hanya dibuat di local/testing
 php artisan storage:link     # agar foto mahasiswa bisa ditampilkan
 ```
 
@@ -185,7 +185,7 @@ php artisan storage:link     # agar foto mahasiswa bisa ditampilkan
 composer run dev
 ```
 
-Buka `http://127.0.0.1:8000`, lalu login dengan akun bawaan:
+Buka `http://127.0.0.1:8000`, lalu login dengan akun demo (hanya lingkungan local/testing):
 
 | Email | Password | Role |
 |-------|----------|------|
@@ -210,10 +210,12 @@ Buka `http://127.0.0.1:8000`, lalu login dengan akun bawaan:
 
 | Perintah | Fungsi |
 |---|---|
+| `php artisan user:create <email> --role=admin` | Membuat admin terverifikasi dengan password minimal 12 karakter yang dimasukkan secara tersembunyi. |
+| `php artisan user:create <email>` | Membuat operator terverifikasi dengan password yang dimasukkan secara tersembunyi. |
 | `php artisan user:role <email> admin` | Menjadikan akun sebagai **admin**. |
 | `php artisan user:role <email> operator` | Menurunkan akun menjadi **operator**. |
 
-Akun yang mendaftar sendiri otomatis menjadi operator. Admin juga bisa mengubah role lewat menu **Pengguna**.
+Registrasi publik ditutup secara default (`AUTH_REGISTRATION_ENABLED=false`). Akun dibuat melalui perintah `user:create`; admin juga bisa mengubah role lewat menu **Pengguna**. Jika registrasi sengaja dibuka, akun yang mendaftar menjadi operator setelah memverifikasi emailnya. Admin terakhir tidak dapat dihapus atau diturunkan rolenya, termasuk melalui Profil dan CLI.
 
 ### Email
 
@@ -237,10 +239,13 @@ Akun yang mendaftar sendiri otomatis menjadi operator. Admin juga bisa mengubah 
 
 | Perintah | Fungsi |
 |---|---|
-| `php artisan test` | Menjalankan seluruh test (117 test). Membutuhkan ekstensi `pdo_sqlite` karena test memakai SQLite in-memory. |
+| `php artisan test` | Menjalankan seluruh test backend. Membutuhkan ekstensi `pdo_sqlite` untuk konfigurasi SQLite in-memory bawaan. |
+| `npm test` | Menjalankan tes regresi JavaScript untuk pencarian tabel. |
 | `php artisan test --filter=KartuMahasiswaTest` | Menjalankan satu kelompok test saja. |
 | `vendor/bin/pint` | Merapikan format kode PHP. |
 | `npm run icons` | Membuat ulang `resources/icons/lucide.php` setelah menambah ikon di `scripts/build-icons.mjs`. |
+
+Suite backend juga dapat dijalankan dengan PostgreSQL melalui variabel lingkungan koneksi. Gunakan database tes terpisah dan atur semua parameter koneksinya secara eksplisit, karena `RefreshDatabase` membangun ulang tabel database tersebut.
 
 ### Produksi
 
@@ -252,6 +257,8 @@ php artisan storage:link
 php artisan optimize          # config:cache + route:cache + view:cache + event:cache
 php artisan queue:work --tries=3   # jalankan lewat supervisor/systemd
 ```
+
+Buat akun produksi melalui `php artisan user:create <email> --role=admin`. Seeder demo tidak berjalan di lingkungan produksi. Untuk beberapa instance aplikasi, gunakan session dan cache bersama (misalnya `SESSION_DRIVER=database` dan `CACHE_STORE=database`) serta volume bersama untuk `storage/app/public` agar foto tersedia di semua instance.
 
 Setelah mengubah `.env` atau config di server, jalankan `php artisan optimize:clear`, lalu `php artisan optimize` lagi.
 
@@ -335,14 +342,14 @@ Database berada di Supabase **Seoul**, sehingga setiap query ke sana memakan 0,1
 
 | Halaman | Sebelum | Sesudah |
 |---|---|---|
-| Dashboard | 7 query, 0,7–4,8 dtk | **0 query** saat cache hangat, ±0,03 dtk |
-| Data Mahasiswa (pindah halaman/filter) | 3 query, 1–7 dtk | 1 query (data + prodi + total digabung). Saat cache hangat atau sudah di-prefetch: 0,04–0,09 dtk |
+| Dashboard | 7 query, 0,7–4,8 dtk | Statistik dilayani dari cache saat hangat; user login dibaca ulang pada setiap request |
+| Data Mahasiswa (pindah halaman/filter) | 3 query, 1–7 dtk | 1 query data (data + prodi + total digabung), atau 0 saat cache hangat, ditambah pembacaan user login |
 | Pencarian | `LIKE` (case-sensitive, "nur" tidak menemukan "Nurul") | `ILIKE` + index trigram |
 | Log aktivitas | — | Disimpan dengan satu INSERT setelah respons terkirim (`defer`), jadi tidak menambah waktu tunggu |
 
 Teknik yang dipakai:
 - Session dan cache disimpan di file lokal.
-- Data user login dan daftar prodi disimpan di cache.
+- Daftar prodi disimpan di cache. User login dibaca ulang dari database agar perubahan role dan penghapusan akun segera berlaku.
 - Cache per halaman/filter dengan *versioning*, otomatis usang saat data berubah.
 - Prefetch saat kursor diarahkan ke link, ditambah *speculation rules* (prerender).
 - Koneksi PDO persisten.

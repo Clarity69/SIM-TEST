@@ -13,6 +13,8 @@ class RoleTest extends TestCase
 
     public function test_self_registered_account_becomes_operator(): void
     {
+        config(['auth.registration_enabled' => true]);
+
         $this->post('/register', [
             'name' => 'Operator Baru',
             'email' => 'operator@example.com',

@@ -12,6 +12,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
         // Akun admin bawaan (aman dijalankan berulang).
         // Email admin dianggap sudah terverifikasi agar bisa langsung login ke dashboard.
         $admin = User::firstOrCreate(

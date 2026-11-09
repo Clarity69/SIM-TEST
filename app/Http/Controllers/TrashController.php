@@ -28,6 +28,8 @@ class TrashController extends Controller
 
     public function restore(Mahasiswa $mahasiswa): RedirectResponse
     {
+        abort_unless($mahasiswa->trashed(), 404);
+
         try {
             $this->pulihkan($mahasiswa);
         } catch (UniqueConstraintViolationException) {
@@ -39,6 +41,8 @@ class TrashController extends Controller
 
     public function destroy(Mahasiswa $mahasiswa): RedirectResponse
     {
+        abort_unless($mahasiswa->trashed(), 404);
+
         $mahasiswa->forceDelete();
 
         return back()->with('success', "{$mahasiswa->nama} dihapus permanen.");

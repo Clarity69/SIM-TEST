@@ -34,18 +34,19 @@ class PerformanceTest extends TestCase
         return collect(DB::getQueryLog())->pluck('query')->all();
     }
 
-    public function test_logged_in_user_is_served_from_cache_after_first_request(): void
+    public function test_logged_in_user_permissions_are_read_from_database_on_each_request(): void
     {
         $user = User::factory()->create();
         $this->login($user);
 
         $this->get(route('dashboard'))->assertOk();
+        $this->app['auth']->forgetGuards();
         $queries = $this->queriesFor(route('dashboard'));
 
-        $this->assertEmpty(array_filter($queries, fn ($sql) => str_contains($sql, '"users"')));
+        $this->assertCount(1, array_filter($queries, fn ($sql) => str_contains($sql, '"users"')));
     }
 
-    public function test_cached_user_is_refreshed_after_profile_update(): void
+    public function test_authenticated_user_is_refreshed_after_profile_update(): void
     {
         $user = User::factory()->create(['name' => 'Nama Lama']);
         $this->login($user);
@@ -102,5 +103,19 @@ class PerformanceTest extends TestCase
 
         $prodi->update(['nama_prodi' => 'Prodi Ganti Nama']);
         $this->get(route('mahasiswa.index'))->assertSee('Prodi Ganti Nama');
+    }
+
+    public function test_program_studi_list_reuses_cached_counts_and_refreshes_after_student_changes(): void
+    {
+        $user = User::factory()->create();
+        $prodi = Prodi::factory()->create();
+        $this->actingAs($user)->get(route('prodi.index'))->assertOk();
+
+        $queries = $this->queriesFor(route('prodi.index'));
+
+        $this->assertEmpty(array_filter($queries, fn ($sql) => str_contains($sql, 'from "prodis"') || str_contains($sql, 'from "mahasiswas"')));
+        Mahasiswa::factory()->for($prodi)->create();
+        $this->get(route('prodi.index'))->assertOk()
+            ->assertViewHas('prodis', fn ($items) => $items->first()->mahasiswas_count === 1);
     }
 }

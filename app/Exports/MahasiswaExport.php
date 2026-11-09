@@ -19,7 +19,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *
  * @implements WithMapping<Mahasiswa>
  */
-class MahasiswaExport implements FromQuery, ShouldAutoSize, WithColumnFormatting, WithHeadings, WithMapping, WithStyles
+class MahasiswaExport extends SafeTextValueBinder implements FromQuery, ShouldAutoSize, WithColumnFormatting, WithHeadings, WithMapping, WithStyles
 {
     public const KOLOM = ['nim', 'nama', 'jenis_kelamin', 'tanggal_lahir', 'prodi', 'angkatan', 'status', 'telepon', 'email', 'alamat'];
 
@@ -30,7 +30,10 @@ class MahasiswaExport implements FromQuery, ShouldAutoSize, WithColumnFormatting
     public function __construct(
         private array $filters = [],
         private ?array $ids = null,
-    ) {}
+        bool $csv = false,
+    ) {
+        $this->escapeCsvFormulas = $csv;
+    }
 
     public function query(): Builder
     {

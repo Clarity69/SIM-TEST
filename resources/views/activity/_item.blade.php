@@ -13,18 +13,21 @@
         'alamat' => 'Alamat', 'telepon' => 'Telepon', 'email' => 'Email', 'prodi_id' => 'Program studi',
         'angkatan' => 'Angkatan', 'status' => 'Status', 'foto' => 'Foto', 'kode_prodi' => 'Kode prodi',
         'singkatan' => 'Singkatan', 'nama_prodi' => 'Nama prodi', 'fakultas' => 'Fakultas', 'kaprodi' => 'Kaprodi',
+        'aktif' => 'Status aktif', 'nidn' => 'NIDN / NUPTK', 'kode' => 'Kode mata kuliah', 'sks' => 'SKS', 'semester' => 'Semester',
         'kaprodi_jabatan' => 'Jabatan kaprodi', 'kaprodi_nidn' => 'NIDN kaprodi', 'role' => 'Role',
     ];
     $tampil = function (string $field, mixed $nilai) use ($namaProdi) {
         return match (true) {
             $nilai === null || $nilai === '' => '—',
             $field === 'foto' => 'foto baru',
+            $field === 'aktif' => $nilai ? 'Aktif' : 'Nonaktif',
             $field === 'prodi_id' => $namaProdi[$nilai] ?? "#{$nilai}",
             $field === 'role' => \App\Models\User::ROLES[$nilai] ?? $nilai,
             default => \Illuminate\Support\Str::limit((string) $nilai, 60),
         };
     };
-    $perubahan = $log->properties['perubahan'] ?? (isset($log->properties['role']) ? ['role' => $log->properties['role']] : []);
+    $role = $log->properties['role'] ?? null;
+    $perubahan = $log->properties['perubahan'] ?? (is_array($role) ? ['role' => $role] : []);
     $contoh = $log->properties['contoh'] ?? [];
     $url = $log->subjectUrl();
 @endphp
@@ -77,6 +80,8 @@
                     </div>
                 @endforeach
             </dl>
+        @elseif (is_string($role))
+            <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Role akun: {{ \App\Models\User::ROLES[$role] ?? $role }}</p>
         @elseif ($contoh !== [])
             <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{{ implode(', ', $contoh) }}{{ count($contoh) >= 5 ? ', …' : '' }}</p>
         @endif

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Services\UserAdministration;
+use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -97,7 +99,7 @@ class ProfileController extends Controller
     /**
      * Hapus akun user yang sedang login (wajib konfirmasi password).
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, UserAdministration $users): RedirectResponse
     {
         $request->validateWithBag('userDeletion', [
             'password' => ['required', 'current_password'],
@@ -105,9 +107,11 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::logout();
-
-        $user->delete();
+        try {
+            $users->delete($user, fn () => Auth::logout());
+        } catch (DomainException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

@@ -1,5 +1,5 @@
 <x-app-layout title="Program Studi" :breadcrumbs="['Program Studi' => null]">
-    <x-page-header title="Program Studi" description="Daftar program studi S1 beserta kaprodi dan jumlah mahasiswanya.">
+    <x-page-header title="Program Studi" eyebrow="Struktur akademik" description="Daftar program studi S1 beserta kaprodi dan jumlah mahasiswanya.">
         <x-button icon="plus" :href="route('prodi.create')">Tambah Prodi</x-button>
     </x-page-header>
 

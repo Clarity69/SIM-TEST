@@ -17,10 +17,10 @@
     ];
     $sizes = [
         'sm' => 'h-8 gap-1.5 px-3 text-xs',
-        'md' => 'h-10 gap-2 px-4 text-sm',
-        'icon' => 'size-9 justify-center',
+        'md' => 'h-11 gap-2 px-4 text-sm',
+        'icon' => 'size-10 shrink-0 justify-center',
     ];
-    $classes = 'inline-flex items-center justify-center rounded-xl font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 '.$variants[$variant].' '.$sizes[$size];
+    $classes = 'inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-xl font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 '.$variants[$variant].' '.$sizes[$size];
 @endphp
 
 @if ($href)

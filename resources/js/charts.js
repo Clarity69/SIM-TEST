@@ -32,8 +32,11 @@ const palette = () => {
 };
 
 const configs = {
-    bar({ labels, values, names }, c) {
+    bar({ labels, values, names, tone }, c) {
         const max = Math.max(...values);
+        const dark = document.documentElement.classList.contains('dark');
+        const primary = tone === 'campus' ? (dark ? '#a5b4fc' : '#4f46e5') : c.primary;
+        const soft = tone === 'campus' ? (dark ? '#6366f1' : '#aaa5f3') : c.primarySoft;
 
         return {
             type: 'bar',
@@ -42,7 +45,7 @@ const configs = {
                 datasets: [{
                     label: 'Mahasiswa',
                     data: values,
-                    backgroundColor: values.map((v) => (v === max ? c.primary : c.primarySoft)),
+                    backgroundColor: values.map((v) => (v === max ? primary : soft)),
                     borderRadius: 8,
                     maxBarThickness: 56,
                 }],
@@ -109,22 +112,61 @@ const configs = {
     },
 };
 
-const draw = (canvas, c) => {
-    Chart.getChart(canvas)?.destroy();
+export const draw = (canvas, c = palette()) => {
     const { type, ...data } = JSON.parse(canvas.dataset.chart);
-    new Chart(canvas, configs[type](data, c));
+    const config = configs[type](data, c);
+    const chart = Chart.getChart(canvas);
+
+    if (chart && chart.config.type === config.type) {
+        chart.data = config.data;
+        chart.options = config.options;
+        chart.update('none');
+
+        return;
+    }
+
+    chart?.destroy();
+    new Chart(canvas, config);
 };
 
 export default function initCharts() {
-    Chart.defaults.font.family = '"Plus Jakarta Sans Variable", system-ui, sans-serif';
+    Chart.defaults.font.family = '\"Plus Jakarta Sans Variable\", system-ui, sans-serif';
+    Chart.defaults.animation = false;
+    const pending = new Set();
+    let frame = null;
+    const schedule = (canvas) => {
+        pending.add(canvas);
+        if (frame !== null) {
+            return;
+        }
+        frame = requestAnimationFrame(() => {
+            frame = null;
+            const colors = palette();
+            for (const target of pending) {
+                if (target.isConnected) {
+                    draw(target, colors);
+                }
+            }
+            pending.clear();
+        });
+    };
     const render = () => {
-        const c = palette();
-        document.querySelectorAll('[data-chart]').forEach((canvas) => draw(canvas, c));
+        document.querySelectorAll('[data-chart]').forEach((canvas) => {
+            if (Chart.getChart(canvas)) {
+                schedule(canvas);
+            }
+        });
     };
 
-    render();
+    const observer = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+            if (entry.isIntersecting) {
+                schedule(entry.target);
+                observer.unobserve(entry.target);
+            }
+        }
+    }, { rootMargin: '200px' });
+    document.querySelectorAll('[data-chart]').forEach((canvas) => observer.observe(canvas));
     window.addEventListener('theme-changed', render);
-
-    // Grafik yang datanya diganti di sisi klien (mis. filter rentang angkatan).
-    document.addEventListener('chart:update', (event) => draw(event.target, palette()));
+    document.addEventListener('chart:update', (event) => schedule(event.target));
 }

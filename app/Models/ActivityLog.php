@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Request;
 use Throwable;
 
@@ -57,6 +58,8 @@ class ActivityLog extends Model
     public const SUBJECTS = [
         Mahasiswa::class => 'mahasiswa',
         Prodi::class => 'prodi',
+        Dosen::class => 'dosen',
+        MataKuliah::class => 'mata_kuliah',
         User::class => 'pengguna',
     ];
 
@@ -100,7 +103,7 @@ class ActivityLog extends Model
             return;
         }
 
-        self::$antrean[] = [
+        $entry = [
             'user_id' => $pelaku->getKey(),
             'user_name' => $pelaku->name,
             'event' => $event,
@@ -113,8 +116,16 @@ class ActivityLog extends Model
             'created_at' => now(),
         ];
 
-        // Callback bernama sama hanya dijalankan sekali per request (duplikat dibuang).
-        defer(static fn () => self::simpanAntrean(), 'activity-log', always: true);
+        $enqueue = static function () use ($entry): void {
+            self::$antrean[] = $entry;
+            defer(static fn () => self::simpanAntrean(), 'activity-log', always: true);
+        };
+
+        if (DB::transactionLevel() > 0) {
+            DB::afterCommit($enqueue);
+        } else {
+            $enqueue();
+        }
     }
 
     /**
@@ -150,7 +161,15 @@ class ActivityLog extends Model
         }
 
         try {
-            static::query()->insert($baris);
+            $actors = User::query()->whereKey(array_column($baris, 'user_id'))->pluck('id')->flip();
+
+            foreach ($baris as $index => $entry) {
+                if (! isset($actors[$entry['user_id']])) {
+                    $baris[$index]['user_id'] = null;
+                }
+            }
+
+            DB::transaction(fn () => static::query()->insert($baris));
         } catch (Throwable $e) {
             // Log aktivitas tidak boleh menggagalkan aksi pengguna yang sudah selesai.
             report($e);
@@ -162,6 +181,7 @@ class ActivityLog extends Model
         return match (true) {
             $subject instanceof Mahasiswa => "{$subject->nama} ({$subject->nim})",
             $subject instanceof Prodi => $subject->nama_prodi,
+            $subject instanceof Dosen, $subject instanceof MataKuliah => $subject->nama,
             $subject instanceof User => "{$subject->name} ({$subject->email})",
             default => class_basename($subject).' #'.$subject->getKey(),
         };
@@ -220,6 +240,8 @@ class ActivityLog extends Model
         return match ($this->subject_type) {
             'mahasiswa' => $this->event === 'deleted' ? null : route('mahasiswa.show', $this->subject_id),
             'prodi' => $this->event === 'deleted' ? null : route('prodi.show', $this->subject_id),
+            'dosen' => route('dosen.edit', $this->subject_id),
+            'mata_kuliah' => route('mata-kuliah.edit', $this->subject_id),
             default => null,
         };
     }

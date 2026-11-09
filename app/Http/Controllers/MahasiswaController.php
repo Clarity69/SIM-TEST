@@ -21,12 +21,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Throwable;
 
 class MahasiswaController extends Controller
 {
@@ -69,7 +71,13 @@ class MahasiswaController extends Controller
             $mahasiswa->foto = $foto->simpan($request->file('foto'));
         }
 
-        $mahasiswa->save();
+        try {
+            DB::transaction(fn () => $mahasiswa->save());
+        } catch (Throwable $exception) {
+            $foto->hapus($mahasiswa->foto);
+
+            throw $exception;
+        }
 
         $this->notifyAdmins('ditambahkan', $mahasiswa, $request);
 
@@ -121,7 +129,15 @@ class MahasiswaController extends Controller
             $mahasiswa->foto = null;
         }
 
-        $mahasiswa->save();
+        try {
+            DB::transaction(fn () => $mahasiswa->save());
+        } catch (Throwable $exception) {
+            if ($mahasiswa->foto !== $fotoLama) {
+                $foto->hapus($mahasiswa->foto);
+            }
+
+            throw $exception;
+        }
 
         if ($fotoLama && $fotoLama !== $mahasiswa->foto) {
             $foto->hapus($fotoLama);
@@ -240,11 +256,13 @@ class MahasiswaController extends Controller
     /**
      * Kirim PDF daftar (sesuai filter aktif) ke email, diproses lewat queue.
      */
-    public function emailPdf(Request $request): RedirectResponse
+    public function emailPdf(Request $request, MahasiswaPdf $pdf): RedirectResponse
     {
         $email = $this->recipient($request);
+        $filters = $this->filters($request);
+        $pdf->validateSize($filters);
 
-        Mail::to($email)->queue(new MahasiswaPdfMail($request->user()->name, $this->filters($request)));
+        Mail::to($email)->queue(new MahasiswaPdfMail($request->user()->name, $filters));
 
         return back()->with('success', "Laporan PDF sedang dikirim ke {$email}.");
     }

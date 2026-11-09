@@ -4,6 +4,8 @@ use App\Models\User;
 
 return [
 
+    'registration_enabled' => env('AUTH_REGISTRATION_ENABLED', false),
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Defaults
@@ -63,8 +65,7 @@ return [
 
     'providers' => [
         'users' => [
-            // Eloquent + cache atribut user di cache lokal (App\Auth\CachedUserProvider).
-            'driver' => 'cached-eloquent',
+            'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
         ],
 

@@ -7,16 +7,49 @@
  * tabelnya diambil lebih dulu sehingga klik terasa instan meski database jauh.
  */
 const PREFETCH_TTL = 30_000;
+const FILTER_LABELS = { search: 'Pencarian', prodi_id: 'Program studi', jenis_kelamin: 'Jenis kelamin', status: 'Status', angkatan: 'Angkatan' };
 
 export default (debounceMs = 350) => ({
     loading: false,
     timer: null,
     controller: null,
+    requestId: 0,
+    filtersOpen: true,
     // Query string aktif, dipakai link Cetak/Kirim PDF agar mengikuti filter.
     query: window.location.search,
     cache: new Map(),
     // ID terpilih untuk aksi massal (tetap tersimpan saat pindah halaman/filter).
     selected: [],
+
+    get activeFilters() {
+        const params = new URLSearchParams(this.query);
+
+        return Object.entries(FILTER_LABELS).filter(([key]) => params.get(key)?.trim()).map(([key, label]) => {
+            const value = params.get(key);
+            const field = this.$refs?.form?.elements.namedItem(key);
+            const option = field?.options ? [...field.options].find((option) => option.value === value) : null;
+
+            return { key, label, value: option?.textContent.trim() ?? value };
+        });
+    },
+
+    removeFilter(key) {
+        const field = this.$refs.form.elements.namedItem(key);
+        if (field) {
+            field.value = '';
+        }
+        this.submit();
+    },
+
+    resetFilters() {
+        for (const key of Object.keys(FILTER_LABELS)) {
+            const field = this.$refs.form.elements.namedItem(key);
+            if (field) {
+                field.value = '';
+            }
+        }
+        this.submit();
+    },
 
     /** ID baris pada halaman yang sedang tampil (dibaca dari potongan tabel). */
     pageIds() {
@@ -47,6 +80,9 @@ export default (debounceMs = 350) => ({
     },
 
     init() {
+        this.filtersOpen = this.activeFilters.some((filter) => filter.key !== 'search')
+            || (window.matchMedia?.('(min-width: 1024px)')?.matches ?? true);
+
         const navLink = (target) => {
             const link = target.closest?.('[data-table-region] a[href]');
 
@@ -58,7 +94,7 @@ export default (debounceMs = 350) => ({
 
             if (link) {
                 event.preventDefault();
-                this.load(link.href);
+                this.load(link.href, true);
             }
         });
 
@@ -66,7 +102,7 @@ export default (debounceMs = 350) => ({
             const link = navLink(event.target);
 
             if (link) {
-                this.fetchPartial(link.href);
+                this.fetchPartial(link.href).catch(() => {});
             }
         };
         this.$el.addEventListener('mouseover', prefetch);
@@ -79,6 +115,7 @@ export default (debounceMs = 350) => ({
     },
 
     submit() {
+        clearTimeout(this.timer);
         const form = this.$refs.form;
         const params = new URLSearchParams(new FormData(form));
 
@@ -103,7 +140,7 @@ export default (debounceMs = 350) => ({
             headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' },
             signal,
         }).then((response) => {
-            if (!response.ok) {
+            if (!response.ok || response.redirected) {
                 throw new Error(response.statusText);
             }
 
@@ -116,7 +153,8 @@ export default (debounceMs = 350) => ({
         return promise;
     },
 
-    async load(url) {
+    async load(url, scrollToTable = false) {
+        const requestId = ++this.requestId;
         this.controller?.abort();
         this.controller = new AbortController();
         this.loading = true;
@@ -124,17 +162,33 @@ export default (debounceMs = 350) => ({
         try {
             const html = await this.fetchPartial(url, this.controller.signal);
 
+            if (requestId !== this.requestId) {
+                return;
+            }
+
             this.$refs.region.innerHTML = html;
             history.replaceState(null, '', url);
             this.query = new URL(url, window.location.origin).search;
-            this.$refs.region.closest('section')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            const params = new URLSearchParams(this.query);
+            for (const key of ['sort', 'direction']) {
+                const field = this.$refs.form?.elements.namedItem(key);
+                if (field) {
+                    field.value = params.get(key) ?? '';
+                }
+            }
+            if (scrollToTable) {
+                const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+                this.$refs.region.closest('section')?.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+            }
             window.dispatchEvent(new CustomEvent('table-updated', { detail: { url } }));
         } catch (error) {
-            if (error.name !== 'AbortError') {
+            if (requestId === this.requestId && error.name !== 'AbortError') {
                 window.location.href = url;
             }
         } finally {
-            this.loading = false;
+            if (requestId === this.requestId) {
+                this.loading = false;
+            }
         }
     },
 });

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Auth\CachedUserProvider;
 use App\Notifications\QueuedResetPassword;
 use App\Notifications\QueuedVerifyEmail;
 use Database\Factories\UserFactory;
@@ -12,7 +11,6 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Cache;
 
 #[Fillable(['name', 'email', 'password', 'notify_mahasiswa_changes'])]
 #[Hidden(['password', 'remember_token'])]
@@ -43,17 +41,6 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;
-    }
-
-    /**
-     * Data user yang login di-cache (CachedUserProvider); bersihkan saat berubah.
-     */
-    protected static function booted(): void
-    {
-        $forget = fn (User $user) => Cache::forget(CachedUserProvider::cacheKey($user->getKey()));
-
-        static::saved($forget);
-        static::deleted($forget);
     }
 
     /**

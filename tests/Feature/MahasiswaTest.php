@@ -8,6 +8,7 @@ use App\Models\Mahasiswa;
 use App\Models\Prodi;
 use App\Models\User;
 use App\Notifications\MahasiswaChanged;
+use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,24 @@ use function Illuminate\Support\defer;
 class MahasiswaTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_oversized_pdf_is_rejected_for_download_and_email_before_queueing(): void
+    {
+        Mail::fake();
+        $prodi = Prodi::factory()->create();
+        $rows = Mahasiswa::factory()->count(2001)->for($prodi)
+            ->sequence(fn (Sequence $sequence) => ['nim' => '2026'.str_pad((string) $sequence->index, 6, '0', STR_PAD_LEFT)])
+            ->raw();
+
+        foreach (array_chunk($rows, 200) as $chunk) {
+            Mahasiswa::query()->insert($chunk);
+        }
+
+        $this->actingAs(User::factory()->create());
+        $this->get(route('mahasiswa.pdf'))->assertSessionHasErrors('pdf');
+        $this->post(route('mahasiswa.pdf.email'))->assertSessionHasErrors('pdf');
+        Mail::assertNothingQueued();
+    }
 
     /**
      * @return array<string, mixed>
@@ -290,6 +309,8 @@ class MahasiswaTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('mahasiswa.index', ['page' => 5]))
             ->assertOk()
+            ->assertSee('Ke halaman pertama')
+            ->assertDontSee('Belum ada mahasiswa')
             ->assertViewHas('mahasiswas', fn ($page) => $page->total() === 3 && $page->isEmpty());
     }
 

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use RuntimeException;
 use Throwable;
@@ -28,8 +29,15 @@ class ImportMahasiswa
      */
     public function baca(UploadedFile $file): array
     {
-        $sheets = Excel::toArray(new BarisDenganHeader, $file);
-        $rows = array_values(array_filter($sheets[0] ?? [], fn ($row) => is_array($row) && array_filter($row, fn ($v) => $v !== null && $v !== '')));
+        $reader = IOFactory::createReaderForFile($file->getRealPath());
+        $worksheets = $reader->listWorksheetInfo($file->getRealPath());
+
+        if (($worksheets[0]['totalRows'] ?? 0) > self::MAKS_BARIS + 1) {
+            throw new RuntimeException('File melebihi maksimal '.self::MAKS_BARIS.' baris per impor (termasuk baris kosong).');
+        }
+
+        $sheets = Excel::toArray(new BarisDenganHeader($worksheets[0]['worksheetName'] ?? null), $file);
+        $rows = array_values(array_filter(array_values($sheets)[0] ?? [], fn ($row) => is_array($row) && array_filter($row, fn ($v) => $v !== null && $v !== '')));
 
         if (! array_key_exists('nim', $rows[0] ?? []) || ! array_key_exists('nama', $rows[0] ?? [])) {
             throw new RuntimeException('Header tidak dikenali. Pastikan baris pertama berisi kolom nim, nama, jenis_kelamin, prodi, ... sesuai template.');
@@ -94,6 +102,7 @@ class ImportMahasiswa
             if ($errors) {
                 $invalid[] = ['baris' => $baris, 'data' => $tampil, 'errors' => array_values(array_unique($errors))];
             } else {
+                $data['angkatan'] = $data['angkatan'] === null ? null : (int) $data['angkatan'];
                 $valid[] = ['baris' => $baris, 'data' => $data, 'prodi' => $prodiLabel];
             }
         }
@@ -120,9 +129,17 @@ class ImportMahasiswa
             }
         }
 
-        DB::transaction(function () use ($rows) {
+        $berhasil = 0;
+        $contoh = [];
+
+        DB::transaction(function () use ($rows, &$berhasil, &$contoh) {
             foreach (array_chunk($rows, 200) as $chunk) {
-                Mahasiswa::insert($chunk);
+                $inserted = Mahasiswa::query()->insertOrIgnore($chunk);
+                $berhasil += $inserted;
+
+                if ($inserted === count($chunk)) {
+                    $contoh = array_slice([...$contoh, ...array_map(fn ($row) => $row['nama'].' ('.$row['nim'].')', $chunk)], 0, 5);
+                }
             }
         });
 
@@ -131,9 +148,9 @@ class ImportMahasiswa
         Mahasiswa::bumpVersiDaftar();
 
         return [
-            'berhasil' => count($rows),
-            'dilewati' => count($valid) - count($rows),
-            'contoh' => array_map(fn ($row) => $row['nama'].' ('.$row['nim'].')', array_slice($rows, 0, 5)),
+            'berhasil' => $berhasil,
+            'dilewati' => count($valid) - $berhasil,
+            'contoh' => $contoh,
         ];
     }
 
@@ -188,7 +205,7 @@ class ImportMahasiswa
             'jenis_kelamin' => $jenisKelamin,
             'tanggal_lahir' => $tanggal,
             'prodi_id' => $prodi['id'] ?? null,
-            'angkatan' => $angkatan === null ? null : (int) $angkatan,
+            'angkatan' => $angkatan,
             'status' => $status,
             'telepon' => $telepon,
             'email' => $this->teks($row['email'] ?? null),

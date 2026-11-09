@@ -21,7 +21,7 @@ class MahasiswaExportController extends Controller
         ActivityLog::catat('export', 'Mengekspor data mahasiswa ke '.($csv ? 'CSV' : 'Excel'), properties: ['filter' => array_filter($filters)]);
 
         return Excel::download(
-            new MahasiswaExport($filters),
+            new MahasiswaExport($filters, csv: $csv),
             'data-mahasiswa-'.now()->format('Ymd-His').($csv ? '.csv' : '.xlsx'),
             $csv ? ExcelFormat::CSV : ExcelFormat::XLSX,
         );

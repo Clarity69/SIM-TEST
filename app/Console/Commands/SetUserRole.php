@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Services\UserAdministration;
+use DomainException;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -11,7 +13,7 @@ use Illuminate\Console\Command;
 #[Description('Ubah role pengguna (admin/operator)')]
 class SetUserRole extends Command
 {
-    public function handle(): int
+    public function handle(UserAdministration $users): int
     {
         $role = (string) $this->argument('role');
 
@@ -29,7 +31,13 @@ class SetUserRole extends Command
             return self::FAILURE;
         }
 
-        $user->forceFill(['role' => $role])->save();
+        try {
+            $users->changeRole($user, $role);
+        } catch (DomainException $exception) {
+            $this->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
         $this->info("{$user->name} sekarang {$role}.");
 
         return self::SUCCESS;

@@ -13,7 +13,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 /**
  * Sheet sederhana dari array (baris pertama = header tebal).
  */
-class SheetArrayExport implements FromArray, ShouldAutoSize, WithColumnFormatting, WithStyles, WithTitle
+class SheetArrayExport extends SafeTextValueBinder implements FromArray, ShouldAutoSize, WithColumnFormatting, WithStyles, WithTitle
 {
     /**
      * @param  list<list<mixed>>  $rows
@@ -23,7 +23,10 @@ class SheetArrayExport implements FromArray, ShouldAutoSize, WithColumnFormattin
         private string $title,
         private array $rows,
         private array $textColumns = [],
-    ) {}
+        bool $csv = false,
+    ) {
+        $this->escapeCsvFormulas = $csv;
+    }
 
     public function array(): array
     {

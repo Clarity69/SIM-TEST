@@ -45,7 +45,7 @@ class KartuMahasiswa
             'kartu' => $kartu,
             'tunggal' => $tunggal,
             'logo' => $this->logo(),
-            'berlaku' => now()->addYear()->locale('id')->translatedFormat('F Y'),
+            'berlaku' => now()->addYear()->endOfMonth()->locale('id')->translatedFormat('F Y'),
         ])->setPaper($tunggal ? self::KARTU_PT : 'a4', 'portrait');
     }
 
@@ -62,11 +62,11 @@ class KartuMahasiswa
     }
 
     /**
-     * Signed URL tanpa kedaluwarsa; berubah bila APP_KEY diganti.
+     * Berlaku sampai akhir bulan yang tercetak pada kartu.
      */
     public function urlVerifikasi(Mahasiswa $mahasiswa): string
     {
-        return URL::signedRoute('kartu.verifikasi', ['mahasiswa' => $mahasiswa->id]);
+        return URL::temporarySignedRoute('kartu.verifikasi', now()->addYear()->endOfMonth(), ['mahasiswa' => $mahasiswa->id]);
     }
 
     /**

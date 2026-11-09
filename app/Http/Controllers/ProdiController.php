@@ -3,9 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProdiRequest;
+use App\Models\Mahasiswa;
 use App\Models\Prodi;
+use App\Services\AcademicStats;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 
 class ProdiController extends Controller
@@ -30,9 +34,16 @@ class ProdiController extends Controller
             });
         }
 
-        $prodis = $query->orderBy('nama_prodi', 'asc')
-            ->paginate(10)
-            ->withQueryString();
+        $page = max(1, $request->integer('page', 1));
+        $cacheKey = 'prodi.daftar.'.Mahasiswa::versiDaftar().'.'.md5(json_encode([$request->query('search'), $page]));
+        $data = Cache::remember($cacheKey, 300, fn (): array => [
+            'rows' => (clone $query)->orderBy('nama_prodi')->forPage($page, 10)->get()
+                ->map(fn (Prodi $prodi): array => $prodi->getAttributes())->all(),
+            'total' => (clone $query)->count(),
+        ]);
+        $prodis = (new LengthAwarePaginator(Prodi::hydrate($data['rows']), $data['total'], 10, $page, [
+            'path' => $request->url(),
+        ]))->withQueryString();
 
         return view('prodi.index', compact('prodis'));
     }
@@ -103,6 +114,10 @@ class ProdiController extends Controller
                 'error',
                 'Prodi tidak dapat dihapus karena masih digunakan mahasiswa (termasuk yang ada di Sampah).'
             );
+        }
+
+        if (app(AcademicStats::class)->get()['ready'] && ($prodi->dosens()->exists() || $prodi->mataKuliahs()->exists())) {
+            return back()->with('error', 'Prodi tidak dapat dihapus karena masih digunakan dosen atau mata kuliah.');
         }
 
         $prodi->delete();

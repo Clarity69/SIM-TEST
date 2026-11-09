@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 /**
@@ -39,11 +40,17 @@ class FotoMahasiswa
         );
 
         ob_start();
-        imagewebp($hasil, null, 80);
+        $encoded = imagewebp($hasil, null, 80);
         $data = (string) ob_get_clean();
 
+        if (! $encoded || $data === '') {
+            throw new RuntimeException('Foto tidak dapat dikonversi ke WebP.');
+        }
+
         $path = self::FOLDER.'/'.Str::uuid().'.webp';
-        Storage::disk('public')->put($path, $data);
+        if (! Storage::disk('public')->put($path, $data)) {
+            throw ValidationException::withMessages(['foto' => 'Foto tidak dapat disimpan. Silakan coba lagi.']);
+        }
 
         return $path;
     }

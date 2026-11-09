@@ -4,13 +4,18 @@ namespace Tests\Feature;
 
 use App\Exports\MahasiswaExport;
 use App\Exports\MahasiswaTemplateExport;
+use App\Exports\SheetArrayExport;
 use App\Models\Mahasiswa;
 use App\Models\Prodi;
 use App\Models\User;
 use App\Notifications\MahasiswaBulkChanged;
+use App\Services\ImportMahasiswa;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
+use Maatwebsite\Excel\Concerns\Export;
+use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Facades\Excel;
 use Tests\TestCase;
 
@@ -150,5 +155,136 @@ class ImportExportTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->post(route('mahasiswa.bulk'), ['aksi' => 'hapus', 'ids' => []])
             ->assertSessionHasErrors('ids');
+    }
+
+    public function test_import_rejects_malformed_years_before_integer_conversion(): void
+    {
+        $this->prodiTi();
+        $csv = "nim,nama,jenis_kelamin,prodi,angkatan\n202512001,A,L,TI,2025abc\n202512002,B,P,TI,2025.9\n202512003,C,L,TI,2025\n";
+
+        $response = $this->actingAs(User::factory()->create())
+            ->post(route('mahasiswa.import.upload'), ['file' => $this->csv($csv)]);
+
+        $response->assertRedirect();
+        $this->get($response->headers->get('Location'))->assertOk()->assertSee('1 baris valid')->assertSee('2 baris bermasalah');
+    }
+
+    public function test_confirming_same_import_twice_keeps_original_result_and_notifies_once(): void
+    {
+        Notification::fake();
+        $this->prodiTi();
+        $admin = User::factory()->admin()->create();
+        $this->actingAs(User::factory()->create());
+        $preview = $this->post(route('mahasiswa.import.upload'), ['file' => $this->csv("nim,nama,jenis_kelamin,prodi\n202512001,A,L,TI\n")])->headers->get('Location');
+        $token = basename($preview);
+
+        $this->post(route('mahasiswa.import.store', $token))->assertRedirect($preview);
+        $this->post(route('mahasiswa.import.store', $token))->assertRedirect($preview);
+
+        $this->assertDatabaseCount('mahasiswas', 1);
+        $this->get($preview)->assertOk()->assertSee('1 mahasiswa berhasil diimpor');
+        Notification::assertSentToTimes($admin, MahasiswaBulkChanged::class, 1);
+    }
+
+    public function test_import_in_progress_rejects_another_confirmation(): void
+    {
+        Notification::fake();
+        $this->prodiTi();
+        $this->actingAs(User::factory()->create());
+        $preview = $this->post(route('mahasiswa.import.upload'), ['file' => $this->csv("nim,nama,jenis_kelamin,prodi\n202512001,A,L,TI\n")])->headers->get('Location');
+        $token = basename($preview);
+        $lock = Cache::lock('import.mahasiswa.'.$token.'.lock', 300);
+        $this->assertTrue($lock->get());
+
+        try {
+            $this->from($preview)->post(route('mahasiswa.import.store', $token))->assertRedirect($preview)->assertSessionHas('error');
+        } finally {
+            $lock->release();
+        }
+
+        $this->assertDatabaseCount('mahasiswas', 0);
+        Notification::assertNothingSent();
+    }
+
+    public function test_nim_added_after_preview_is_skipped_without_losing_other_rows(): void
+    {
+        Notification::fake();
+        $prodi = $this->prodiTi();
+        $this->actingAs(User::factory()->create());
+        $preview = $this->post(route('mahasiswa.import.upload'), ['file' => $this->csv("nim,nama,jenis_kelamin,prodi\n202512001,A,L,TI\n202512002,B,P,TI\n")])->headers->get('Location');
+        Mahasiswa::factory()->for($prodi)->create(['nim' => '202512001', 'nama' => 'Data Pengguna Lain']);
+
+        $this->post(route('mahasiswa.import.store', basename($preview)))->assertRedirect($preview);
+
+        $this->assertDatabaseCount('mahasiswas', 2);
+        $this->assertDatabaseHas('mahasiswas', ['nim' => '202512001', 'nama' => 'Data Pengguna Lain']);
+        $this->get($preview)->assertOk()->assertSee('1 mahasiswa berhasil diimpor');
+    }
+
+    public function test_database_conflict_is_skipped_during_insert_without_overwriting_student(): void
+    {
+        $prodi = $this->prodiTi();
+        Mahasiswa::factory()->for($prodi)->create(['nim' => '202512001', 'nama' => 'Nama Asli']);
+        $import = app(ImportMahasiswa::class);
+        $valid = $import->validasi([
+            ['nim' => '202512002', 'nama' => 'Baru', 'jenis_kelamin' => 'L', 'prodi' => 'TI'],
+        ])['valid'];
+        $valid[] = ['baris' => 3, 'data' => $valid[0]['data'], 'prodi' => 'TI'];
+
+        $result = $import->simpan($valid);
+
+        $this->assertSame(1, $result['berhasil']);
+        $this->assertSame(1, $result['dilewati']);
+        $this->assertDatabaseCount('mahasiswas', 2);
+        $this->assertDatabaseHas('mahasiswas', ['nim' => '202512001', 'nama' => 'Nama Asli']);
+    }
+
+    public function test_oversized_import_is_rejected_before_preview(): void
+    {
+        $rows = "nim,nama,jenis_kelamin,prodi\n".str_repeat("202512001,A,L,TI\n", 2001);
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('mahasiswa.import.upload'), ['file' => $this->csv($rows)])
+            ->assertSessionHasErrors('file');
+
+        $this->assertDatabaseCount('mahasiswas', 0);
+    }
+
+    public function test_deleted_prodi_after_preview_reports_error_without_partial_import(): void
+    {
+        Notification::fake();
+        $prodi = $this->prodiTi();
+        $this->actingAs(User::factory()->create());
+        $preview = $this->post(route('mahasiswa.import.upload'), ['file' => $this->csv("nim,nama,jenis_kelamin,prodi\n202512001,A,L,TI\n")])->headers->get('Location');
+        $prodi->delete();
+
+        $this->from($preview)->post(route('mahasiswa.import.store', basename($preview)))
+            ->assertRedirect($preview)->assertSessionHas('error');
+
+        $this->assertDatabaseCount('mahasiswas', 0);
+        Notification::assertNothingSent();
+    }
+
+    public function test_workbook_import_reads_only_first_sheet(): void
+    {
+        $this->prodiTi();
+        $workbook = new class implements Export, WithMultipleSheets
+        {
+            /** @return list<SheetArrayExport> */
+            public function sheets(): array
+            {
+                return [
+                    new SheetArrayExport('data', [['nim', 'nama', 'jenis_kelamin', 'prodi'], ['202512001', 'Mahasiswa Pertama', 'L', 'TI']]),
+                    new SheetArrayExport('lainnya', [['nim', 'nama', 'jenis_kelamin', 'prodi'], ['202512002', 'Mahasiswa Kedua', 'P', 'TI']]),
+                ];
+            }
+        };
+        $file = UploadedFile::fake()->createWithContent('mahasiswa.xlsx', Excel::raw($workbook, \Maatwebsite\Excel\Excel::XLSX));
+
+        $response = $this->actingAs(User::factory()->create())->post(route('mahasiswa.import.upload'), ['file' => $file]);
+
+        $response->assertSessionHasNoErrors()->assertRedirect();
+        $this->get($response->headers->get('Location'))->assertOk()->assertSee('1 baris valid')
+            ->assertSee('Mahasiswa Pertama')->assertDontSee('Mahasiswa Kedua');
     }
 }

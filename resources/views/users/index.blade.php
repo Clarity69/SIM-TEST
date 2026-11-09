@@ -1,5 +1,7 @@
 <x-app-layout title="Pengguna" :breadcrumbs="['Pengguna' => null]">
-    <x-page-header title="Pengguna" description="Atur siapa yang menjadi admin atau operator. Akun yang mendaftar sendiri otomatis menjadi operator." />
+    <x-page-header title="Pengguna" eyebrow="Pengaturan akses" description="Kelola akses pengguna sesuai tanggung jawabnya. Admin dan operator memiliki izin yang berbeda.">
+        <x-button :href="route('users.create')" icon="user-plus">Tambah Pengguna</x-button>
+    </x-page-header>
 
     <div class="grid gap-3 sm:grid-cols-2">
         <div class="flex gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm dark:border-slate-800 dark:bg-slate-900">
